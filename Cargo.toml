@@ -1,0 +1,15 @@
+[package]
+name = "ecs-demo"
+version = "0.1.0"
+edition = "2024"
+
+[workspace]
+resolver = "3"
+members = ["crates/vct_ecs","crates/vct_platform",
+    "crates/vct_ptr",
+    "crates/vct_reflect"
+, "crates/vct_tasks", "crates/vct_utils"]
+
+[dependencies]
+vct_ptr = { path = "crates/vct_ptr"}
+vct_reflect = { path = "crates/vct_reflect" }
