@@ -15,22 +15,41 @@ members = [
 ]
 
 [dependencies]
-vct_ptr = { path = "crates/vct_ptr"}
+vct_ptr = { path = "crates/vct_ptr" }
+vct_platform = { path = "crates/vct_platform" }
+vct_utils = { path = "crates/vct_utils" }
 vct_reflect = { path = "crates/vct_reflect" }
-
+vct_tasks = { path = "crates/vct_tasks" }
+vct_ecs = { path = "crates/vct_ecs" }
 
 [workspace.lints.clippy]
 std_instead_of_core = "warn"
 std_instead_of_alloc = "warn"
 alloc_instead_of_core = "warn"
 
+needless_lifetimes = "allow"
+too_many_arguments = "allow"
+type_complexity = "allow"
+
 [workspace.lints.rust]
 unsafe_code = "deny"
+unsafe_op_in_unsafe_fn = "warn"
+unused_qualifications = "warn"
 
 [lints.clippy]
 std_instead_of_core = "allow"
 std_instead_of_alloc = "allow"
 alloc_instead_of_core = "allow"
 
+needless_lifetimes = "allow"
+too_many_arguments = "allow"
+type_complexity = "allow"
+
 [lints.rust]
 unsafe_code = "deny"
+unsafe_op_in_unsafe_fn = "warn"
+unused_qualifications = "warn"
+
+[package.metadata.docs.rs]
+rustdoc-args = ["-Zunstable-options", "--generate-link-to-definition"]
+all-features = true
