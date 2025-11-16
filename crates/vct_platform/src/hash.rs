@@ -1,0 +1,123 @@
+use core::{
+    fmt::Debug,
+    hash::{BuildHasher, Hash, Hasher},
+    marker::PhantomData,
+    ops::Deref,
+};
+
+pub use foldhash::fast::{FixedState, FoldHasher as DefaultHasher, RandomState};
+
+const FIXED_HASH: FixedState = FixedState::with_seed(0x95EE04C40326B271);
+
+#[derive(Copy, Clone, Default, Debug)]
+pub struct FixedHash;
+
+impl BuildHasher for FixedHash {
+    type Hasher = DefaultHasher<'static>;
+
+    #[inline]
+    fn build_hasher(&self) -> Self::Hasher {
+        FIXED_HASH.build_hasher()
+    }
+}
+
+pub struct Hashed<V, S = FixedHash> {
+    hash: u64,
+    value: V,
+    marker: PhantomData<S>,
+}
+
+impl<V: Hash, H: BuildHasher + Default> Hashed<V, H> {
+    pub fn new(value: V) -> Self {
+        Self {
+            hash: H::default().hash_one(&value),
+            value,
+            marker: PhantomData,
+        }
+    }
+
+    #[inline]
+    pub fn hash(&self) -> u64 {
+        self.hash
+    }
+}
+
+impl<V, H> Hash for Hashed<V, H> {
+    #[inline]
+    fn hash<R: Hasher>(&self, state: &mut R) {
+        state.write_u64(self.hash);
+    }
+}
+
+impl<V, H> Deref for Hashed<V, H> {
+    type Target = V;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+impl<V: PartialEq, H> PartialEq for Hashed<V, H> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.hash == other.hash && self.value.eq(&other.value)
+    }
+}
+
+impl<V: Debug, H> Debug for Hashed<V, H> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Hashed")
+            .field("hash", &self.hash)
+            .field("value", &self.value)
+            .finish()
+    }
+}
+
+impl<V: Clone, H> Clone for Hashed<V, H> {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            hash: self.hash,
+            value: self.value.clone(),
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<V: Copy, H> Copy for Hashed<V, H> {}
+
+impl<V: Eq, H> Eq for Hashed<V, H> {}
+
+/// 一个不带操作的 Hasher 实现，只能使用 writer_u64
+#[derive(Debug, Default)]
+pub struct NoOpHasher {
+    hash: u64,
+}
+
+impl Hasher for NoOpHasher {
+    #[inline]
+    fn finish(&self) -> u64 {
+        self.hash
+    }
+
+    fn write(&mut self, _bytes: &[u8]) {
+        panic!("Can only hash u64 using NoOpHasher");
+    }
+
+    #[inline]
+    fn write_u64(&mut self, i: u64) {
+        self.hash = i;
+    }
+}
+
+#[derive(Copy, Clone, Default, Debug)]
+pub struct NoOpHash;
+
+impl BuildHasher for NoOpHash {
+    type Hasher = NoOpHasher;
+
+    fn build_hasher(&self) -> Self::Hasher {
+        NoOpHasher::default()
+    }
+}

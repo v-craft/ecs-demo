@@ -80,14 +80,14 @@ pub use crate::switch;
 #[doc(inline)]
 pub use crate::define_alias;
 
+pub use enabled as std;
+pub use enabled as alloc;
+
 define_alias! {
-    #[cfg(feature = "alloc")] => alloc,
-    #[cfg(feature = "std")] => std,
     #[cfg(panic = "unwind")] => panic_unwind,
     #[cfg(panic = "abort")] => panic_abort,
     #[cfg(all(target_arch = "wasm32", feature = "web"))] => web,
-    #[cfg(all(feature = "alloc", target_has_atomic = "ptr"))] => arc,
-    #[cfg(feature = "critical-section")] => critical_section,
+    #[cfg(target_has_atomic = "ptr")] => arc,
 }
 
 #[doc(hidden)]

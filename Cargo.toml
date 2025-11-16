@@ -23,10 +23,6 @@ vct_tasks = { path = "crates/vct_tasks" }
 vct_ecs = { path = "crates/vct_ecs" }
 
 [workspace.lints.clippy]
-std_instead_of_core = "warn"
-std_instead_of_alloc = "warn"
-alloc_instead_of_core = "warn"
-
 needless_lifetimes = "allow"
 too_many_arguments = "allow"
 type_complexity = "allow"
@@ -37,10 +33,6 @@ unsafe_op_in_unsafe_fn = "warn"
 unused_qualifications = "warn"
 
 [lints.clippy]
-std_instead_of_core = "allow"
-std_instead_of_alloc = "allow"
-alloc_instead_of_core = "allow"
-
 needless_lifetimes = "allow"
 too_many_arguments = "allow"
 type_complexity = "allow"
