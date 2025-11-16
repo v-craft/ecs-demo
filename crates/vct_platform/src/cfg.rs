@@ -1,7 +1,7 @@
 /// 此宏用于表示关闭的条件编译块
-/// 
+///
 /// # 例
-/// 
+///
 /// ```ignore
 /// # use vct_platform::cfg;
 /// let mut x = 0;
@@ -20,9 +20,9 @@
 pub use crate::disabled;
 
 /// 此宏用于表示开启的条件编译块
-/// 
+///
 /// # 例
-/// 
+///
 /// ```ignore
 /// # use vct_platform::cfg;
 /// let mut x = 0;
@@ -41,9 +41,9 @@ pub use crate::disabled;
 pub use crate::enabled;
 
 /// 一个类 switch 的条件编译宏
-/// 
+///
 /// # 例
-/// 
+///
 /// ```ignore
 /// # use vct_platform::cfg;
 /// let mut x = 0;
@@ -63,18 +63,18 @@ pub use crate::enabled;
 pub use crate::switch;
 
 /// 用于给编译特性定义 `cfg::enabled` 类似的宏
-/// 
+///
 /// # 例
-/// 
+///
 /// ```ignore
 /// cfg::define_alias!{
 ///     #[cfg(test)] => enable_test,
 /// };
-/// 
+///
 /// let mut x = false;
 /// enable_test!{ x = true; };
 /// ```
-/// 
+///
 /// 这会提供一个 `enable_test!` 宏。如果 `#[cfg(test)]` 成立，
 /// 则其等效于 `cfg::enabled` ，否则等效于 `cfg::disabled` 。
 #[doc(inline)]
@@ -195,7 +195,6 @@ macro_rules! define_alias {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use crate::cfg;
@@ -203,7 +202,7 @@ mod test {
     #[test]
     fn cfg_disabled() {
         let mut x = 0;
-        assert!( !cfg::disabled!() );
+        assert!(!cfg::disabled!());
         cfg::disabled!(
             if {
                 panic!();
@@ -211,14 +210,14 @@ mod test {
                 x += 1;
             }
         );
-        cfg::disabled!{ x += 10; };
+        cfg::disabled! { x += 10; };
         assert_eq!(x, 1);
     }
 
     #[test]
     fn cfg_enabled() {
         let mut x = 0;
-        assert!( cfg::enabled!() );
+        assert!(cfg::enabled!());
         cfg::enabled!(
             if {
                 x += 1;
@@ -226,7 +225,7 @@ mod test {
                 panic!();
             }
         );
-        cfg::enabled!{ x += 10; };
+        cfg::enabled! { x += 10; };
         assert_eq!(x, 11);
     }
 
@@ -251,13 +250,12 @@ mod test {
 
     #[test]
     fn cfg_define_alias() {
-        cfg::define_alias!{
+        cfg::define_alias! {
             #[cfg(test)] => enable_test,
         };
 
         let mut x = false;
-        enable_test!{ x = !x; };
+        enable_test! { x = !x; };
         assert!(x);
     }
 }
-

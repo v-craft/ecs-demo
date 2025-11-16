@@ -35,7 +35,6 @@ js-sys = { version = "0.3", optional = true }
 wasm-bindgen = { version = "0.2", optional = true }
 
 
-
 [lints]
 workspace = true
 

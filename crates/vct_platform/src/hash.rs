@@ -7,8 +7,10 @@ use core::{
 
 pub use foldhash::fast::{FixedState, FoldHasher as DefaultHasher, RandomState};
 
+/// 一个随机生成的固定哈希种子
 const FIXED_HASH: FixedState = FixedState::with_seed(0x95EE04C40326B271);
 
+/// 固定哈希生成器
 #[derive(Copy, Clone, Default, Debug)]
 pub struct FixedHash;
 
@@ -21,6 +23,7 @@ impl BuildHasher for FixedHash {
     }
 }
 
+/// 用于存储已生成哈希值的对象
 pub struct Hashed<V, S = FixedHash> {
     hash: u64,
     value: V,
@@ -28,6 +31,7 @@ pub struct Hashed<V, S = FixedHash> {
 }
 
 impl<V: Hash, H: BuildHasher + Default> Hashed<V, H> {
+    /// 预计算哈希值
     pub fn new(value: V) -> Self {
         Self {
             hash: H::default().hash_one(&value),
@@ -36,6 +40,7 @@ impl<V: Hash, H: BuildHasher + Default> Hashed<V, H> {
         }
     }
 
+    /// 获取预计算的指针
     #[inline]
     pub fn hash(&self) -> u64 {
         self.hash

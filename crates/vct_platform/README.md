@@ -1,5 +1,7 @@
 # V-Craft Cross-Platform Support
 
+> 参考 [bevy_platform](https://github.com/bevyengine/bevy/blob/main/crates/bevy_platform/README.md).
+
 Rust 标准库提供了三个层级：core、alloc、std。
 
 core 是最基础的语言核心功能；

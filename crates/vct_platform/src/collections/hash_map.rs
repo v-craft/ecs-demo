@@ -1,8 +1,5 @@
-//! Provides [`HashMap`] based on [hashbrown]'s implementation.
-//! Unlike [`hashbrown::HashMap`], [`HashMap`] defaults to [`FixedHash`]
-//! instead of [`RandomState`].
-//! This provides determinism by default with an acceptable compromise to denial
-//! of service resistance in the context of a game engine.
+//! 基于 [hashbrown] 的实现，提供新的 [`HashMap`]。
+//! 此 [`HashMap`] 默认使用 [`FixedHash`] 而不是 [`RandomState`]。
 
 use core::{
     fmt::Debug,
@@ -10,43 +7,78 @@ use core::{
     ops::{Deref, DerefMut, Index},
 };
 
-use hashbrown::{hash_map as hb, Equivalent};
-
+// 固定的哈希生成器
 use crate::hash::FixedHash;
 
-#[cfg(feature = "rayon")]
-use rayon::prelude::{FromParallelIterator, IntoParallelIterator, ParallelExtend};
+pub use crate::hash::{DefaultHasher, RandomState};
 
-// Re-exports to match `std::collections::hash_map`
-pub use {
-    crate::hash::{DefaultHasher, RandomState},
-    hb::{
-        Drain, IntoIter, IntoKeys, IntoValues, Iter, IterMut, Keys, OccupiedEntry, VacantEntry,
-        Values, ValuesMut,
-    },
-};
+use hashbrown::{Equivalent, hash_map as hb};
 
-// Additional items from `hashbrown`
+// 重导出 API
 pub use hb::{
-    EntryRef, ExtractIf, OccupiedError, RawEntryBuilder, RawEntryBuilderMut, RawEntryMut,
-    RawOccupiedEntryMut,
+    Drain, EntryRef, ExtractIf, IntoIter, IntoKeys, IntoValues, Iter, IterMut, Keys, OccupiedEntry,
+    OccupiedError, RawEntryBuilder, RawEntryBuilderMut, RawEntryMut, RawOccupiedEntryMut,
+    VacantEntry, Values, ValuesMut,
 };
 
-/// Shortcut for [`Entry`](hb::Entry) with [`FixedHash`] as the default hashing provider.
+/// 一个默认使用 `FixedHash` 的简化别名
 pub type Entry<'a, K, V, S = FixedHash> = hb::Entry<'a, K, V, S>;
 
-/// New-type for [`HashMap`](hb::HashMap) with [`FixedHash`] as the default hashing provider.
-/// Can be trivially converted to and from a [hashbrown] [`HashMap`](hb::HashMap) using [`From`].
+/// 一个基于 [`hb::HashMap`] 的 new-type，默认使用 [`FixedHash`] 作为哈希构造器
 ///
-/// A new-type is used instead of a type alias due to critical methods like [`new`](hb::HashMap::new)
-/// being incompatible with Bevy's choice of default hasher.
-///
-/// Unlike [`hashbrown::HashMap`], [`HashMap`] defaults to [`FixedHash`]
-/// instead of [`RandomState`].
-/// This provides determinism by default with an acceptable compromise to denial
-/// of service resistance in the context of a game engine.
+/// 大部分方法都直接调用底层 `hb::HashMap` 的操作，额外添加少量方法以简化操作
 #[repr(transparent)]
 pub struct HashMap<K, V, S = FixedHash>(hb::HashMap<K, V, S>);
+
+impl<K, V, const N: usize> From<[(K, V); N]> for HashMap<K, V, FixedHash>
+where
+    K: Eq + Hash,
+{
+    fn from(arr: [(K, V); N]) -> Self {
+        arr.into_iter().collect()
+    }
+}
+
+impl<K, V> HashMap<K, V, FixedHash> {
+    /// 创建一个空的 [`HashMap`] 。
+    ///
+    /// # 例
+    ///
+    /// ```rust
+    /// # use vct_platform::collections::HashMap;
+    ///
+    /// let map = HashMap::new();
+    /// # // 文档测试
+    /// # let mut map = map;
+    /// # map.insert(0usize, "foo");
+    /// # assert_eq!(map.get(&0), Some("foo").as_ref());
+    /// ```
+    #[inline]
+    pub const fn new() -> Self {
+        Self::with_hasher(FixedHash)
+    }
+
+    /// 创建一个空的 [`HashMap`] 并预留指定的容量
+    ///
+    /// # 例
+    ///
+    /// ```rust
+    /// # use vct_platform::collections::HashMap;
+    ///
+    /// let map = HashMap::with_capacity(5);
+    /// # // 文档测试
+    /// # let mut map = map;
+    /// # map.insert(0usize, "foo");
+    /// # assert_eq!(map.get(&0), Some("foo").as_ref());
+    /// ```
+    #[inline]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self::with_capacity_and_hasher(capacity, FixedHash)
+    }
+}
+
+// --------------------------------------------------
+// ↓ 复写一遍底层方法
 
 impl<K, V, S> Clone for HashMap<K, V, S>
 where
@@ -122,7 +154,6 @@ where
     hb::HashMap<K, V, S>: IntoIterator,
 {
     type Item = <hb::HashMap<K, V, S> as IntoIterator>::Item;
-
     type IntoIter = <hb::HashMap<K, V, S> as IntoIterator>::IntoIter;
 
     #[inline]
@@ -136,7 +167,6 @@ where
     &'a hb::HashMap<K, V, S>: IntoIterator,
 {
     type Item = <&'a hb::HashMap<K, V, S> as IntoIterator>::Item;
-
     type IntoIter = <&'a hb::HashMap<K, V, S> as IntoIterator>::IntoIter;
 
     #[inline]
@@ -150,7 +180,6 @@ where
     &'a mut hb::HashMap<K, V, S>: IntoIterator,
 {
     type Item = <&'a mut hb::HashMap<K, V, S> as IntoIterator>::Item;
-
     type IntoIter = <&'a mut hb::HashMap<K, V, S> as IntoIterator>::IntoIter;
 
     #[inline]
@@ -166,15 +195,6 @@ where
     #[inline]
     fn extend<U: IntoIterator<Item = T>>(&mut self, iter: U) {
         self.0.extend(iter);
-    }
-}
-
-impl<K, V, const N: usize> From<[(K, V); N]> for HashMap<K, V, FixedHash>
-where
-    K: Eq + Hash,
-{
-    fn from(arr: [(K, V); N]) -> Self {
-        arr.into_iter().collect()
     }
 }
 
@@ -235,6 +255,9 @@ where
         Ok(Self(serde::Deserialize::deserialize(deserializer)?))
     }
 }
+
+#[cfg(feature = "rayon")]
+use rayon::prelude::{FromParallelIterator, IntoParallelIterator, ParallelExtend};
 
 #[cfg(feature = "rayon")]
 impl<K, V, S, T> FromParallelIterator<T> for HashMap<K, V, S>
@@ -303,64 +326,17 @@ where
     }
 }
 
-impl<K, V> HashMap<K, V, FixedHash> {
-    /// Creates an empty [`HashMap`].
-    ///
-    /// Refer to [`new`](hb::HashMap::new) for further details.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use bevy_platform::collections::HashMap;
-    /// #
-    /// // Creates a HashMap with zero capacity.
-    /// let map = HashMap::new();
-    /// #
-    /// # let mut map = map;
-    /// # map.insert(0usize, "foo");
-    /// # assert_eq!(map.get(&0), Some("foo").as_ref());
-    /// ```
-    #[inline]
-    pub const fn new() -> Self {
-        Self::with_hasher(FixedHash)
-    }
-
-    /// Creates an empty [`HashMap`] with the specified capacity.
-    ///
-    /// Refer to [`with_capacity`](hb::HashMap::with_capacity) for further details.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use bevy_platform::collections::HashMap;
-    /// #
-    /// // Creates a HashMap with capacity for at least 5 entries.
-    /// let map = HashMap::with_capacity(5);
-    /// #
-    /// # let mut map = map;
-    /// # map.insert(0usize, "foo");
-    /// # assert_eq!(map.get(&0), Some("foo").as_ref());
-    /// ```
-    #[inline]
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self::with_capacity_and_hasher(capacity, FixedHash)
-    }
-}
-
 impl<K, V, S> HashMap<K, V, S> {
-    /// Creates an empty [`HashMap`] which will use the given hash builder to hash
-    /// keys.
+    /// 创建一个空的 [`HashMap`] 并使用指定的哈希构造器
     ///
-    /// Refer to [`with_hasher`](hb::HashMap::with_hasher) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
-    /// # use bevy_platform::hash::FixedHash as SomeHasher;
-    /// // Creates a HashMap with the provided hasher.
+    /// # use vct_platform::collections::HashMap;
+    /// # use vct_platform::hash::FixedHash as SomeHasher;
+    ///
     /// let map = HashMap::with_hasher(SomeHasher);
-    /// #
+    /// # // doc test
     /// # let mut map = map;
     /// # map.insert(0usize, "foo");
     /// # assert_eq!(map.get(&0), Some("foo").as_ref());
@@ -370,19 +346,16 @@ impl<K, V, S> HashMap<K, V, S> {
         Self(hb::HashMap::with_hasher(hash_builder))
     }
 
-    /// Creates an empty [`HashMap`] with the specified capacity, using `hash_builder`
-    /// to hash the keys.
+    /// 创建一个空的 [`HashMap`]，预留指定容量并使用指定的哈希构造器
     ///
-    /// Refer to [`with_capacity_and_hasher`](hb::HashMap::with_capacity_and_hasher) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
-    /// # use bevy_platform::hash::FixedHash as SomeHasher;
-    /// // Creates a HashMap with capacity for 5 entries and the provided hasher.
+    /// # use vct_platform::collections::HashMap;
+    /// # use vct_platform::hash::FixedHash as SomeHasher;
+    ///
     /// let map = HashMap::with_capacity_and_hasher(5, SomeHasher);
-    /// #
+    /// # // doc test
     /// # let mut map = map;
     /// # map.insert(0usize, "foo");
     /// # assert_eq!(map.get(&0), Some("foo").as_ref());
@@ -395,42 +368,35 @@ impl<K, V, S> HashMap<K, V, S> {
         ))
     }
 
-    /// Returns a reference to the map's [`BuildHasher`], or `S` parameter.
-    ///
-    /// Refer to [`hasher`](hb::HashMap::hasher) for further details.
+    /// 返回内部使用的 [`BuildHasher`] 的引用
     #[inline]
     pub fn hasher(&self) -> &S {
         self.0.hasher()
     }
 
-    /// Returns the number of elements the map can hold without reallocating.
+    /// 返回内部“容量”
     ///
-    /// Refer to [`capacity`](hb::HashMap::capacity) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let map = HashMap::with_capacity(5);
     ///
+    /// # // doc test
     /// # let map: HashMap<(), ()> = map;
-    /// #
-    /// assert!(map.capacity() >= 5);
+    /// # assert!(map.capacity() >= 5);
     /// ```
     #[inline]
     pub fn capacity(&self) -> usize {
         self.0.capacity()
     }
 
-    /// An iterator visiting all keys in arbitrary order.
-    /// The iterator element type is `&'a K`.
+    /// 获取`&'a K` 的迭代器
     ///
-    /// Refer to [`keys`](hb::HashMap::keys) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// #
     /// let mut map = HashMap::new();
     ///
@@ -439,10 +405,8 @@ impl<K, V, S> HashMap<K, V, S> {
     /// map.insert("baz", 2);
     ///
     /// for key in map.keys() {
-    ///     // foo, bar, baz
-    ///     // Note that the above order is not guaranteed
+    ///     // foo, bar, baz （不保证顺序）
     /// }
-    /// #
     /// # assert_eq!(map.keys().count(), 3);
     /// ```
     #[inline]
@@ -450,15 +414,12 @@ impl<K, V, S> HashMap<K, V, S> {
         self.0.keys()
     }
 
-    /// An iterator visiting all values in arbitrary order.
-    /// The iterator element type is `&'a V`.
+    /// 返回 `&'a V` 的迭代器
     ///
-    /// Refer to [`values`](hb::HashMap::values) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// #
     /// let mut map = HashMap::new();
     ///
@@ -467,10 +428,8 @@ impl<K, V, S> HashMap<K, V, S> {
     /// map.insert("baz", 2);
     ///
     /// for key in map.values() {
-    ///     // 0, 1, 2
-    ///     // Note that the above order is not guaranteed
+    ///     // 0, 1, 2 （不保证顺序）
     /// }
-    /// #
     /// # assert_eq!(map.values().count(), 3);
     /// ```
     #[inline]
@@ -478,15 +437,12 @@ impl<K, V, S> HashMap<K, V, S> {
         self.0.values()
     }
 
-    /// An iterator visiting all values mutably in arbitrary order.
-    /// The iterator element type is `&'a mut V`.
+    /// 返回 `&'a mut V` 的迭代器
     ///
-    /// Refer to [`values`](hb::HashMap::values) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// #
     /// let mut map = HashMap::new();
     ///
@@ -495,10 +451,8 @@ impl<K, V, S> HashMap<K, V, S> {
     /// map.insert("baz", 2);
     ///
     /// for key in map.values_mut() {
-    ///     // 0, 1, 2
-    ///     // Note that the above order is not guaranteed
+    ///     // 0, 1, 2 （不保证顺序）
     /// }
-    /// #
     /// # assert_eq!(map.values_mut().count(), 3);
     /// ```
     #[inline]
@@ -506,15 +460,12 @@ impl<K, V, S> HashMap<K, V, S> {
         self.0.values_mut()
     }
 
-    /// An iterator visiting all key-value pairs in arbitrary order.
-    /// The iterator element type is `(&'a K, &'a V)`.
+    /// 返回 `(&'a K, &'a V)` 的迭代器
     ///
-    /// Refer to [`iter`](hb::HashMap::iter) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// #
     /// let mut map = HashMap::new();
     ///
@@ -523,10 +474,8 @@ impl<K, V, S> HashMap<K, V, S> {
     /// map.insert("baz", 2);
     ///
     /// for (key, value) in map.iter() {
-    ///     // ("foo", 0), ("bar", 1), ("baz", 2)
-    ///     // Note that the above order is not guaranteed
+    ///     // ("foo", 0), ("bar", 1), ("baz", 2) （不保证顺序）
     /// }
-    /// #
     /// # assert_eq!(map.iter().count(), 3);
     /// ```
     #[inline]
@@ -534,16 +483,12 @@ impl<K, V, S> HashMap<K, V, S> {
         self.0.iter()
     }
 
-    /// An iterator visiting all key-value pairs in arbitrary order,
-    /// with mutable references to the values.
-    /// The iterator element type is `(&'a K, &'a mut V)`.
+    /// 返回 `(&'a K, &'a mut V)` 的迭代器
     ///
-    /// Refer to [`iter_mut`](hb::HashMap::iter_mut) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// #
     /// let mut map = HashMap::new();
     ///
@@ -552,10 +497,8 @@ impl<K, V, S> HashMap<K, V, S> {
     /// map.insert("baz", 2);
     ///
     /// for (key, value) in map.iter_mut() {
-    ///     // ("foo", 0), ("bar", 1), ("baz", 2)
-    ///     // Note that the above order is not guaranteed
+    ///     // ("foo", 0), ("bar", 1), ("baz", 2) （不保证顺序）
     /// }
-    /// #
     /// # assert_eq!(map.iter_mut().count(), 3);
     /// ```
     #[inline]
@@ -563,14 +506,12 @@ impl<K, V, S> HashMap<K, V, S> {
         self.0.iter_mut()
     }
 
-    /// Returns the number of elements in the map.
+    /// 返回容器中现有元素的数量
     ///
-    /// Refer to [`len`](hb::HashMap::len) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let mut map = HashMap::new();
     ///
     /// assert_eq!(map.len(), 0);
@@ -584,14 +525,12 @@ impl<K, V, S> HashMap<K, V, S> {
         self.0.len()
     }
 
-    /// Returns `true` if the map contains no elements.
+    /// 如果容器内没有元素，则返回 `true`
     ///
-    /// Refer to [`is_empty`](hb::HashMap::is_empty) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let mut map = HashMap::new();
     ///
     /// assert!(map.is_empty());
@@ -605,15 +544,12 @@ impl<K, V, S> HashMap<K, V, S> {
         self.0.is_empty()
     }
 
-    /// Clears the map, returning all key-value pairs as an iterator. Keeps the
-    /// allocated memory for reuse.
+    /// 清理容器，返回键值对的迭代器，保持容量不变（不释放内存）
     ///
-    /// Refer to [`drain`](hb::HashMap::drain) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// #
     /// let mut map = HashMap::new();
     ///
@@ -622,8 +558,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// map.insert("baz", 2);
     ///
     /// for (key, value) in map.drain() {
-    ///     // ("foo", 0), ("bar", 1), ("baz", 2)
-    ///     // Note that the above order is not guaranteed
+    ///     // ("foo", 0), ("bar", 1), ("baz", 2) （不保证顺序）
     /// }
     ///
     /// assert!(map.is_empty());
@@ -633,15 +568,12 @@ impl<K, V, S> HashMap<K, V, S> {
         self.0.drain()
     }
 
-    /// Retains only the elements specified by the predicate. Keeps the
-    /// allocated memory for reuse.
+    /// 保留容器中满足条件的元素，保持容量不变（不释放内存）
     ///
-    /// Refer to [`retain`](hb::HashMap::retain) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// #
     /// let mut map = HashMap::new();
     ///
@@ -661,15 +593,12 @@ impl<K, V, S> HashMap<K, V, S> {
         self.0.retain(f);
     }
 
-    /// Drains elements which are true under the given predicate,
-    /// and returns an iterator over the removed items.
+    /// 去除满足条件的元素，返回被去除元素的迭代器,容器容量不变（不释放内存）
     ///
-    /// Refer to [`extract_if`](hb::HashMap::extract_if) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// #
     /// let mut map = HashMap::new();
     ///
@@ -692,15 +621,12 @@ impl<K, V, S> HashMap<K, V, S> {
         self.0.extract_if(f)
     }
 
-    /// Clears the map, removing all key-value pairs. Keeps the allocated memory
-    /// for reuse.
+    /// 清理容器但保留已分配的内存
     ///
-    /// Refer to [`clear`](hb::HashMap::clear) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// #
     /// let mut map = HashMap::new();
     ///
@@ -717,16 +643,12 @@ impl<K, V, S> HashMap<K, V, S> {
         self.0.clear();
     }
 
-    /// Creates a consuming iterator visiting all the keys in arbitrary order.
-    /// The map cannot be used after calling this.
-    /// The iterator element type is `K`.
+    /// 消耗自身并返回 key 的迭代器
     ///
-    /// Refer to [`into_keys`](hb::HashMap::into_keys) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// #
     /// let mut map = HashMap::new();
     ///
@@ -735,8 +657,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// map.insert("baz", 2);
     ///
     /// for key in map.into_keys() {
-    ///     // "foo", "bar", "baz"
-    ///     // Note that the above order is not guaranteed
+    ///     // "foo", "bar", "baz" （不保证顺序）
     /// }
     /// ```
     #[inline]
@@ -744,16 +665,12 @@ impl<K, V, S> HashMap<K, V, S> {
         self.0.into_keys()
     }
 
-    /// Creates a consuming iterator visiting all the values in arbitrary order.
-    /// The map cannot be used after calling this.
-    /// The iterator element type is `V`.
+    /// 消耗自身并返回 val 的迭代器
     ///
-    /// Refer to [`into_values`](hb::HashMap::into_values) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// #
     /// let mut map = HashMap::new();
     ///
@@ -762,8 +679,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// map.insert("baz", 2);
     ///
     /// for key in map.into_values() {
-    ///     // 0, 1, 2
-    ///     // Note that the above order is not guaranteed
+    ///     // 0, 1, 2 （不保证顺序）
     /// }
     /// ```
     #[inline]
@@ -771,12 +687,12 @@ impl<K, V, S> HashMap<K, V, S> {
         self.0.into_values()
     }
 
-    /// Takes the inner [`HashMap`](hb::HashMap) out of this wrapper.
+    /// 去除内部的 [`HashMap`](hb::HashMap)
     ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let map: HashMap<&'static str, usize> = HashMap::new();
     /// let map: hashbrown::HashMap<&'static str, usize, _> = map.into_inner();
     /// ```
@@ -791,16 +707,12 @@ where
     K: Eq + Hash,
     S: BuildHasher,
 {
-    /// Reserves capacity for at least `additional` more elements to be inserted
-    /// in the [`HashMap`]. The collection may reserve more space to avoid
-    /// frequent reallocations.
+    /// 将容量提升至不少于 `additional` 的量，可能会分配更多空间以避免频繁重分配
     ///
-    /// Refer to [`reserve`](hb::HashMap::reserve) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let mut map = HashMap::with_capacity(5);
     ///
     /// # let mut map: HashMap<(), ()> = map;
@@ -816,16 +728,12 @@ where
         self.0.reserve(additional);
     }
 
-    /// Tries to reserve capacity for at least `additional` more elements to be inserted
-    /// in the given `HashMap<K,V>`. The collection may reserve more space to avoid
-    /// frequent reallocations.
+    /// 尝试将容量提升至不少于 `additional` 的量，可能会分配更多空间以避免频繁重分配
     ///
-    /// Refer to [`try_reserve`](hb::HashMap::try_reserve) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let mut map = HashMap::with_capacity(5);
     ///
     /// # let mut map: HashMap<(), ()> = map;
@@ -841,16 +749,12 @@ where
         self.0.try_reserve(additional)
     }
 
-    /// Shrinks the capacity of the map as much as possible. It will drop
-    /// down as much as possible while maintaining the internal rules
-    /// and possibly leaving some space in accordance with the resize policy.
+    /// 尽可能削减容量到内部元素数，可能会预留部分空间
     ///
-    /// Refer to [`shrink_to_fit`](hb::HashMap::shrink_to_fit) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let mut map = HashMap::with_capacity(5);
     ///
     /// map.insert("foo", 0);
@@ -868,24 +772,18 @@ where
         self.0.shrink_to_fit();
     }
 
-    /// Shrinks the capacity of the map with a lower limit. It will drop
-    /// down no lower than the supplied limit while maintaining the internal rules
-    /// and possibly leaving some space in accordance with the resize policy.
-    ///
-    /// Refer to [`shrink_to`](hb::HashMap::shrink_to) for further details.
+    /// 削减容量到不低于目标的值
     #[inline]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.0.shrink_to(min_capacity);
     }
 
-    /// Gets the given key's corresponding entry in the map for in-place manipulation.
+    /// 获取给定 key 在 map 中的对应条目
     ///
-    /// Refer to [`entry`](hb::HashMap::entry) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let mut map = HashMap::new();
     ///
     /// let value = map.entry("foo").or_insert(0);
@@ -897,14 +795,14 @@ where
         self.0.entry(key)
     }
 
-    /// Gets the given key's corresponding entry by reference in the map for in-place manipulation.
+    /// 获取给定键在映射中的对应条目的引用
     ///
     /// Refer to [`entry_ref`](hb::HashMap::entry_ref) for further details.
     ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let mut map = HashMap::new();
     /// # let mut map: HashMap<&'static str, usize> = map;
     ///
@@ -920,14 +818,12 @@ where
         self.0.entry_ref(key)
     }
 
-    /// Returns a reference to the value corresponding to the key.
+    /// 返回给定 key 对应的 value 的不可变引用（如果存在）
     ///
-    /// Refer to [`get`](hb::HashMap::get) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let mut map = HashMap::new();
     ///
     /// map.insert("foo", 0);
@@ -942,14 +838,14 @@ where
         self.0.get(k)
     }
 
-    /// Returns the key-value pair corresponding to the supplied key.
+    /// 返回给定键对应的键值对的不可变引用（如果存在）
     ///
     /// Refer to [`get_key_value`](hb::HashMap::get_key_value) for further details.
     ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let mut map = HashMap::new();
     ///
     /// map.insert("foo", 0);
@@ -964,14 +860,12 @@ where
         self.0.get_key_value(k)
     }
 
-    /// Returns the key-value pair corresponding to the supplied key, with a mutable reference to value.
+    /// 返回给定键对应的键值对的引用，值将是可变引用（如果存在）
     ///
-    /// Refer to [`get_key_value_mut`](hb::HashMap::get_key_value_mut) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let mut map = HashMap::new();
     ///
     /// map.insert("foo", 0);
@@ -986,14 +880,12 @@ where
         self.0.get_key_value_mut(k)
     }
 
-    /// Returns `true` if the map contains a value for the specified key.
+    /// 若内部存在给定键则返回 `true`
     ///
-    /// Refer to [`contains_key`](hb::HashMap::contains_key) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let mut map = HashMap::new();
     ///
     /// map.insert("foo", 0);
@@ -1008,14 +900,12 @@ where
         self.0.contains_key(k)
     }
 
-    /// Returns a mutable reference to the value corresponding to the key.
+    /// 获取给定键对应的值的可变引用（如果存在）
     ///
-    /// Refer to [`get_mut`](hb::HashMap::get_mut) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let mut map = HashMap::new();
     ///
     /// map.insert("foo", 0);
@@ -1030,14 +920,12 @@ where
         self.0.get_mut(k)
     }
 
-    /// Attempts to get mutable references to `N` values in the map at once.
+    /// 一次性批量获取给定键对应的值的可变引用（如果存在）
     ///
-    /// Refer to [`get_many_mut`](hb::HashMap::get_many_mut) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let mut map = HashMap::new();
     ///
     /// map.insert("foo", 0);
@@ -1056,15 +944,12 @@ where
         self.0.get_many_mut(ks)
     }
 
-    /// Attempts to get mutable references to `N` values in the map at once, with immutable
-    /// references to the corresponding keys.
+    /// 一次性批量获取给定键对应的键值对的引用，值是可变引用（如果存在）
     ///
-    /// Refer to [`get_many_key_value_mut`](hb::HashMap::get_many_key_value_mut) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let mut map = HashMap::new();
     ///
     /// map.insert("foo", 0);
@@ -1086,14 +971,12 @@ where
         self.0.get_many_key_value_mut(ks)
     }
 
-    /// Inserts a key-value pair into the map.
+    /// 插入键值对
     ///
-    /// Refer to [`insert`](hb::HashMap::insert) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let mut map = HashMap::new();
     ///
     /// map.insert("foo", 0);
@@ -1105,15 +988,12 @@ where
         self.0.insert(k, v)
     }
 
-    /// Tries to insert a key-value pair into the map, and returns
-    /// a mutable reference to the value in the entry.
+    /// 尝试插入键值对，并返回值的可变引用
     ///
-    /// Refer to [`try_insert`](hb::HashMap::try_insert) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let mut map = HashMap::new();
     ///
     /// map.try_insert("foo", 0).unwrap();
@@ -1125,15 +1005,12 @@ where
         self.0.try_insert(key, value)
     }
 
-    /// Removes a key from the map, returning the value at the key if the key
-    /// was previously in the map. Keeps the allocated memory for reuse.
+    /// 尝试移除键值对并返回值的拷贝，保持容器容量不变
     ///
-    /// Refer to [`remove`](hb::HashMap::remove) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let mut map = HashMap::new();
     ///
     /// map.insert("foo", 0);
@@ -1150,15 +1027,12 @@ where
         self.0.remove(k)
     }
 
-    /// Removes a key from the map, returning the stored key and value if the
-    /// key was previously in the map. Keeps the allocated memory for reuse.
+    /// 移除键值对并返回键值对的拷贝，保持容量不变
     ///
-    /// Refer to [`remove_entry`](hb::HashMap::remove_entry) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let mut map = HashMap::new();
     ///
     /// map.insert("foo", 0);
@@ -1175,15 +1049,12 @@ where
         self.0.remove_entry(k)
     }
 
-    /// Returns the total amount of memory allocated internally by the hash
-    /// set, in bytes.
+    /// 返回容器总分配的内存字节数
     ///
-    /// Refer to [`allocation_size`](hb::HashMap::allocation_size) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
-    /// # use bevy_platform::collections::HashMap;
+    /// # use vct_platform::collections::HashMap;
     /// let mut map = HashMap::new();
     ///
     /// assert_eq!(map.allocation_size(), 0);
@@ -1197,51 +1068,26 @@ where
         self.0.allocation_size()
     }
 
-    /// Insert a key-value pair into the map without checking
-    /// if the key already exists in the map.
+    /// 插入一个键值对且不检查是否已存在
     ///
-    /// Refer to [`insert_unique_unchecked`](hb::HashMap::insert_unique_unchecked) for further details.
+    /// # 安全性要求
     ///
-    /// # Safety
-    ///
-    /// This operation is safe if a key does not exist in the map.
-    ///
-    /// However, if a key exists in the map already, the behavior is unspecified:
-    /// this operation may panic, loop forever, or any following operation with the map
-    /// may panic, loop forever or return arbitrary result.
-    ///
-    /// That said, this operation (and following operations) are guaranteed to
-    /// not violate memory safety.
-    ///
-    /// However this operation is still unsafe because the resulting `HashMap`
-    /// may be passed to unsafe code which does expect the map to behave
-    /// correctly, and would cause unsoundness as a result.
+    /// 键不存在时使用此方法是安全的。
+    /// 键已存在时，是未定义行为。
     #[expect(
         unsafe_code,
         reason = "re-exporting unsafe method from Hashbrown requires unsafe code"
     )]
     #[inline]
     pub unsafe fn insert_unique_unchecked(&mut self, key: K, value: V) -> (&K, &mut V) {
-        // SAFETY: safety contract is ensured by the caller.
         unsafe { self.0.insert_unique_unchecked(key, value) }
     }
 
-    /// Attempts to get mutable references to `N` values in the map at once, without validating that
-    /// the values are unique.
+    /// 尝试批量获取可变引用，但不检查它们是否都满足别名要求
     ///
-    /// Refer to [`get_many_unchecked_mut`](hb::HashMap::get_many_unchecked_mut) for further details.
+    /// # 安全性要求
     ///
-    /// Returns an array of length `N` with the results of each query. `None` will be used if
-    /// the key is missing.
-    ///
-    /// For a safe alternative see [`get_many_mut`](`HashMap::get_many_mut`).
-    ///
-    /// # Safety
-    ///
-    /// Calling this method with overlapping keys is *[undefined behavior]* even if the resulting
-    /// references are not used.
-    ///
-    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    /// 如果查询的 key 发生重复，行为未定义（即使未使用返回值）
     #[expect(
         unsafe_code,
         reason = "re-exporting unsafe method from Hashbrown requires unsafe code"
@@ -1254,26 +1100,14 @@ where
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
-        // SAFETY: safety contract is ensured by the caller.
         unsafe { self.0.get_many_unchecked_mut(keys) }
     }
 
-    /// Attempts to get mutable references to `N` values in the map at once, with immutable
-    /// references to the corresponding keys, without validating that the values are unique.
+    /// 尝试批量获取可变引用，但不检查它们是否都满足别名要求
     ///
-    /// Refer to [`get_many_key_value_unchecked_mut`](hb::HashMap::get_many_key_value_unchecked_mut) for further details.
+    /// # 安全性要求
     ///
-    /// Returns an array of length `N` with the results of each query. `None` will be returned if
-    /// any of the keys are missing.
-    ///
-    /// For a safe alternative see [`get_many_key_value_mut`](`HashMap::get_many_key_value_mut`).
-    ///
-    /// # Safety
-    ///
-    /// Calling this method with overlapping keys is *[undefined behavior]* even if the resulting
-    /// references are not used.
-    ///
-    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    /// 如果查询的 key 发生重复，行为未定义（即使未使用返回值）
     #[expect(
         unsafe_code,
         reason = "re-exporting unsafe method from Hashbrown requires unsafe code"
@@ -1286,7 +1120,6 @@ where
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
-        // SAFETY: safety contract is ensured by the caller.
         unsafe { self.0.get_many_key_value_unchecked_mut(keys) }
     }
 }

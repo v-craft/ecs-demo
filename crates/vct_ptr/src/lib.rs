@@ -26,7 +26,7 @@ impl<T: ?Sized> ConstNonNull<T> {
     /// 如果 `ptr` 非空，创建一个新的 `ConstNonNull` 对象。
     ///
     /// # 例
-    /// 
+    ///
     /// ```
     /// use vct_ptr::ConstNonNull;
     ///
@@ -44,7 +44,7 @@ impl<T: ?Sized> ConstNonNull<T> {
     }
 
     /// 创建一个新 `ConstNonNull`  对象
-    /// 
+    ///
     /// 不检查，但使用空指针是未定义行为 ⚠️
     ///
     /// # 例
@@ -212,7 +212,7 @@ impl IsAligned for Unaligned {
 /// 一个类型擦除的指向不可变对象的指针
 ///
 /// 此类型在概念上类似不可变引用，可以把它看做 `&'a dyn Any` 。
-/// 
+///
 /// 安全地使用它应满足以下条件：
 /// - 它必须始终指向一个有效的值。
 /// - 生命周期 `'a` 准确地表示此指针多久有效。
@@ -241,10 +241,10 @@ pub struct Ptr<'a, A: IsAligned = Aligned>(NonNull<u8>, PhantomData<(&'a u8, A)>
 pub struct PtrMut<'a, A: IsAligned = Aligned>(NonNull<u8>, PhantomData<(&'a mut u8, A)>);
 
 /// 一个类型擦除的指针。
-/// 
+///
 /// 这个指针**不负责**目标的内存释放，它通常用于指向栈区或 `Vec` 等容器托管的数据。  
 /// 概念上它有数据的“所有权”，可以把他想象成 `&'a mut ManuallyDrop<dyn Any>` ，因此需要你手动调用目标的 `Drop::drop` 。
-/// 
+///
 /// 安全地使用它应满足以下条件：
 /// - 它必须始终指向一个有效的值。
 /// - 生命周期 `'a` 准确地表示此指针多久有效。
@@ -260,7 +260,7 @@ pub struct OwningPtr<'a, A: IsAligned = Aligned>(NonNull<u8>, PhantomData<(&'a m
 ///
 /// 这个指针**不负责**目标的内存释放，它通常用于指向栈区或 `Vec` 等容器托管的数据。  
 /// 概念上它有数据的“所有权”且知晓数据类型，因此他会在自身 `drop` 时自动执行目标数据的 `Drop::drop` 。
-/// 
+///
 /// “大对象”通常是“一个小对象+一个堆区大对象”，小对象的 `drop` 负责清理堆区对象资源。
 /// 此指针 [`MovingPtr`] 指向这个小对象的并代理它的的 `drop` 函数。
 /// 此时小对象自身可以廉价的在内存中拷贝/移动，不会触发 `drop` 也不需要移动大对象 。
@@ -352,7 +352,7 @@ impl<'a, A: IsAligned> Ptr<'a, A> {
     /// - 任何对象在同一时刻至多存在一个活跃的可变引用（`&mut T`、`PtrMut`、`OwningPtr`...）。
     /// - [`PtrMut`] 创建后，旧的 [`Ptr`] 不可再被使用，因为对象可能被修改。
     /// （正如获取可变引用后，不可变引用将失效）
-    /// 
+    ///
     /// > 在 bevy_ptr 中，此函数被命名为 assert_unique 。
     #[inline]
     pub const unsafe fn into_mut(self) -> PtrMut<'a, A> {
@@ -404,16 +404,16 @@ impl<'a, A: IsAligned> PtrMut<'a, A> {
     }
 
     /// 获取不可变指针，通常用于作用域传递
-    /// 
-    /// 安全性要求：（即 Rust 别名规则） 
+    ///
+    /// 安全性要求：（即 Rust 别名规则）
     /// - `PtrMut` 的有效性保证应该是 `Ptr` 的超集
     /// - `Ptr` 有效期间不能使用 `PtrMut` 修改数据。
-    /// 
+    ///
     /// # 例
-    /// 
+    ///
     /// ```
     /// use vct_ptr::PtrMut;
-    /// 
+    ///
     /// let mut x = 5;
     /// let pm = PtrMut::from(&mut x);
     /// {
@@ -427,17 +427,17 @@ impl<'a, A: IsAligned> PtrMut<'a, A> {
     }
 
     /// 从当前的 [`PtrMut`] 获取一个更小的生命周期版本
-    /// 
+    ///
     /// 由于 `PtrMut` 不支持复制，此函数通常用于指针的函数传递。
-    /// 
+    ///
     /// 安全性要求
     /// - 同一时刻只能有一个活跃的可变指针，新指针有效期间不可使用旧指针
-    /// 
+    ///
     /// # 例
-    /// 
+    ///
     /// ```
     /// use vct_ptr::PtrMut;
-    /// 
+    ///
     /// let mut x = 5;
     /// let mut pm1 = PtrMut::from(&mut x);
     /// {
@@ -453,7 +453,7 @@ impl<'a, A: IsAligned> PtrMut<'a, A> {
     }
 
     /// 将 [`PtrMut`] 转换为 [`OwningPtr`]，消耗自身
-    /// 
+    ///
     /// 此函数不负责 `forget` 目标的 `drop` 函数，需注意 `drop` 的调用情况。
     #[inline]
     pub const unsafe fn promote(self) -> OwningPtr<'a, A> {
@@ -470,7 +470,7 @@ impl<'a, T: ?Sized> From<&'a mut T> for PtrMut<'a> {
 
 impl<'a> OwningPtr<'a> {
     /// 此函数用于削减编译耗时
-    /// 
+    ///
     /// 此处代码被编译的次数与类型数 T 一致，
     /// 内联 `make` 则将和类型数与函数数的乘积(T*F)一致。
     unsafe fn make_internal<T>(temp: &mut ManuallyDrop<T>) -> OwningPtr<'_> {
@@ -478,7 +478,7 @@ impl<'a> OwningPtr<'a> {
     }
 
     /// 将对象移动到局部作用域，将其 `drop` 交给 `OwningPtr` 托管，然后通过 `OwningPtr` 消耗此值。
-    /// 
+    ///
     /// # 安全性要求
     /// - 若闭包未将 `val` 数据移出，则闭包应通过 `OwningPtr` 执行 `drop_as` 函数清理数据（若 `val` 有 `Drop` 实现）。
     /// - 若闭包将 `val` 数据移出，则旧的 `OwningPtr` 不可再使用（其指向旧地址）。
@@ -553,16 +553,16 @@ impl<'a, A: IsAligned> OwningPtr<'a, A> {
     }
 
     /// 获取不可变指针，通常用于作用域传递
-    /// 
-    /// 安全性要求：（即 Rust 别名规则） 
+    ///
+    /// 安全性要求：（即 Rust 别名规则）
     /// - `OwningPtr` 的有效性保证应该是 `Ptr` 的超集
     /// - `Ptr` 有效期间不能使用 `OwningPtr` 修改数据。
-    /// 
+    ///
     /// # 例
-    /// 
+    ///
     /// ```
     /// use vct_ptr::PtrMut;
-    /// 
+    ///
     /// let mut x = 5;
     /// let op = unsafe{ PtrMut::from(&mut x).promote() };
     /// {
@@ -576,15 +576,15 @@ impl<'a, A: IsAligned> OwningPtr<'a, A> {
     }
 
     /// 获取可变指针，通常用于作用域传递
-    /// 
+    ///
     /// 安全性要求
     /// - 同一时刻只能有一个活跃的可变指针，新指针有效期间不可使用旧指针
-    /// 
+    ///
     /// # 例
-    /// 
+    ///
     /// ```
     /// use vct_ptr::PtrMut;
-    /// 
+    ///
     /// let mut x = 5;
     /// let op = unsafe{ PtrMut::from(&mut x).promote() };
     /// {
@@ -599,7 +599,7 @@ impl<'a, A: IsAligned> OwningPtr<'a, A> {
     }
 
     /// 根据类型转换到 [`MovingPtr`]
-    /// 
+    ///
     /// # 安全性要求
     /// - `MovingPtr` 会自动执行 `T` 的 `Drop::drop`，调用者需要避免二次 `drop` 。
     #[inline]
@@ -627,7 +627,7 @@ macro_rules! impl_ptr {
 
         impl<A: IsAligned> $ptr<'_, A> {
             /// 计算偏移后的指针
-            /// 
+            ///
             /// 因为类型擦除，偏移量将直接以字节为单位。
             #[inline]
             pub const unsafe fn byte_offset(self, count: isize) -> Self {
@@ -638,7 +638,7 @@ macro_rules! impl_ptr {
             }
 
             /// 计算正向偏移后的指针
-            /// 
+            ///
             /// 因为类型擦除，偏移量将直接以字节为单位。
             #[inline]
             pub const unsafe fn byte_add(self, count: usize) -> Self {
@@ -783,7 +783,7 @@ impl<'a, T, A: IsAligned> MovingPtr<'a, T, A> {
     }
 
     /// 读取指针指向的值
-    /// 
+    ///
     /// # 安全性要求：
     /// - 自身必须始终指向一个有效的 `T` 类型实例。
     /// - 自身“拥有”它指向的值。
@@ -816,7 +816,7 @@ impl<'a, T, A: IsAligned> MovingPtr<'a, T, A> {
     /// 将此指针指向的值写入指定位置。
     ///
     /// 此操作将预先 `drop` `dst` 中的值。
-    /// 
+    ///
     /// # 安全性要求
     /// - `dst` 为可变借用，必须指向一个有效的 `T` 实例。
     /// - `dst` 必须满足 `T` 的对齐要求。
@@ -881,10 +881,7 @@ impl<'a, T, A: IsAligned> MovingPtr<'a, T, A> {
     ///
     /// [`forget`]: core::mem::forget
     #[inline(always)]
-    pub unsafe fn move_field<U>(
-        &self,
-        f: impl Fn(*mut T) -> *mut U
-    ) -> MovingPtr<'a, U, A> {
+    pub unsafe fn move_field<U>(&self, f: impl Fn(*mut T) -> *mut U) -> MovingPtr<'a, U, A> {
         MovingPtr(
             unsafe { NonNull::new_unchecked(f(self.0.as_ptr())) },
             PhantomData,
@@ -1016,7 +1013,7 @@ pub struct ThinSlicePtr<'a, T> {
     _marker: PhantomData<&'a [T]>,
 }
 
-// ↓ 此写法存在 Copy 和 Clone 的自动实现存在问题 
+// ↓ 此写法存在 Copy 和 Clone 的自动实现存在问题
 // ```
 // #[derive(Copy, Clone)]
 // pub struct ThinSlicePtr<'a, T> {

@@ -1,12 +1,11 @@
 #![doc = include_str!("../README.md")]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-pub mod cfg;
-pub mod thread;
-pub mod time;
-pub mod hash;
 pub mod cell;
+pub mod cfg;
 pub mod collections;
+pub mod hash;
+pub mod time;
 
 /// 重导出 web 相关库
 #[doc(hidden)]

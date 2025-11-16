@@ -1,8 +1,5 @@
-//! Provides [`HashSet`] based on [hashbrown]'s implementation.
-//! Unlike [`hashbrown::HashSet`], [`HashSet`] defaults to [`FixedHash`]
-//! instead of [`RandomState`](crate::hash::RandomState).
-//! This provides determinism by default with an acceptable compromise to denial
-//! of service resistance in the context of a game engine.
+//! 基于 [hashbrown] 的实现，提供新的 [`HashSet`]。
+//! 此 [`HashSet`] 默认使用 [`FixedHash`] 而不是 [`RandomState`](crate::hash::RandomState)。
 
 use core::{
     fmt::Debug,
@@ -13,34 +10,75 @@ use core::{
     },
 };
 
-use hashbrown::{hash_set as hb, Equivalent};
-
+// 固定的哈希生成器
 use crate::hash::FixedHash;
 
-#[cfg(feature = "rayon")]
-use rayon::prelude::{FromParallelIterator, IntoParallelIterator, ParallelExtend};
+use hashbrown::{Equivalent, hash_set as hb};
 
-// Re-exports to match `std::collections::hash_set`
-pub use hb::{Difference, Drain, Intersection, IntoIter, Iter, SymmetricDifference, Union};
+// 重导出 API
+pub use hb::{
+    Difference, Drain, ExtractIf, Intersection, IntoIter, Iter, OccupiedEntry, SymmetricDifference,
+    Union, VacantEntry,
+};
 
-// Additional items from `hashbrown`
-pub use hb::{ExtractIf, OccupiedEntry, VacantEntry};
-
-/// Shortcut for [`Entry`](hb::Entry) with [`FixedHash`] as the default hashing provider.
+/// 一个默认使用 `FixedHash` 的简化别名
 pub type Entry<'a, T, S = FixedHash> = hb::Entry<'a, T, S>;
 
-/// New-type for [`HashSet`](hb::HashSet) with [`FixedHash`] as the default hashing provider.
-/// Can be trivially converted to and from a [hashbrown] [`HashSet`](hb::HashSet) using [`From`].
+/// 一个基于 [`hb::HashSet`] 的 new-type，默认使用 [`FixedHash`] 作为哈希构造器
 ///
-/// A new-type is used instead of a type alias due to critical methods like [`new`](hb::HashSet::new)
-/// being incompatible with Bevy's choice of default hasher.
-///
-/// Unlike [`hashbrown::HashSet`], [`HashSet`] defaults to [`FixedHash`]
-/// instead of [`RandomState`](crate::hash::RandomState).
-/// This provides determinism by default with an acceptable compromise to denial
-/// of service resistance in the context of a game engine.
+/// 大部分方法都直接调用底层 `hb::HashSet` 的操作，额外添加少量方法以简化操作
 #[repr(transparent)]
 pub struct HashSet<T, S = FixedHash>(hb::HashSet<T, S>);
+
+impl<T, const N: usize> From<[T; N]> for HashSet<T, FixedHash>
+where
+    T: Eq + Hash,
+{
+    fn from(value: [T; N]) -> Self {
+        value.into_iter().collect()
+    }
+}
+
+impl<T> HashSet<T, FixedHash> {
+    /// 创建一个空的 [`HashSet`]
+    ///
+    /// # 例
+    ///
+    /// ```rust
+    /// # use bevy_platform::collections::HashSet;
+    /// #
+    /// let map = HashSet::new();
+    /// #
+    /// # let mut map = map;
+    /// # map.insert("foo");
+    /// # assert_eq!(map.get("foo"), Some("foo").as_ref());
+    /// ```
+    #[inline]
+    pub const fn new() -> Self {
+        Self::with_hasher(FixedHash)
+    }
+
+    /// 创建一个空的 [`HashSet`] 并指定容量
+    ///
+    /// # 例
+    ///
+    /// ```rust
+    /// # use bevy_platform::collections::HashSet;
+    /// #
+    /// let map = HashSet::with_capacity(5);
+    /// #
+    /// # let mut map = map;
+    /// # map.insert("foo");
+    /// # assert_eq!(map.get("foo"), Some("foo").as_ref());
+    /// ```
+    #[inline]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self::with_capacity_and_hasher(capacity, FixedHash)
+    }
+}
+
+// --------------------------------------------------
+// ↓ 复写一遍底层方法
 
 impl<T, S> Clone for HashSet<T, S>
 where
@@ -151,15 +189,6 @@ where
     }
 }
 
-impl<T, const N: usize> From<[T; N]> for HashSet<T, FixedHash>
-where
-    T: Eq + Hash,
-{
-    fn from(value: [T; N]) -> Self {
-        value.into_iter().collect()
-    }
-}
-
 impl<T, S> From<crate::collections::HashMap<T, (), S>> for HashSet<T, S> {
     #[inline]
     fn from(value: crate::collections::HashMap<T, (), S>) -> Self {
@@ -226,6 +255,9 @@ where
 }
 
 #[cfg(feature = "rayon")]
+use rayon::prelude::{FromParallelIterator, IntoParallelIterator, ParallelExtend};
+
+#[cfg(feature = "rayon")]
 impl<T, S, U> FromParallelIterator<U> for HashSet<T, S>
 where
     hb::HashSet<T, S>: FromParallelIterator<U>,
@@ -279,56 +311,10 @@ where
     }
 }
 
-impl<T> HashSet<T, FixedHash> {
-    /// Creates an empty [`HashSet`].
-    ///
-    /// Refer to [`new`](hb::HashSet::new) for further details.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use bevy_platform::collections::HashSet;
-    /// #
-    /// // Creates a HashSet with zero capacity.
-    /// let map = HashSet::new();
-    /// #
-    /// # let mut map = map;
-    /// # map.insert("foo");
-    /// # assert_eq!(map.get("foo"), Some("foo").as_ref());
-    /// ```
-    #[inline]
-    pub const fn new() -> Self {
-        Self::with_hasher(FixedHash)
-    }
-
-    /// Creates an empty [`HashSet`] with the specified capacity.
-    ///
-    /// Refer to [`with_capacity`](hb::HashSet::with_capacity) for further details.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use bevy_platform::collections::HashSet;
-    /// #
-    /// // Creates a HashSet with capacity for at least 5 entries.
-    /// let map = HashSet::with_capacity(5);
-    /// #
-    /// # let mut map = map;
-    /// # map.insert("foo");
-    /// # assert_eq!(map.get("foo"), Some("foo").as_ref());
-    /// ```
-    #[inline]
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self::with_capacity_and_hasher(capacity, FixedHash)
-    }
-}
-
 impl<T, S> HashSet<T, S> {
-    /// Returns the number of elements the set can hold without reallocating.
+    /// 返回容器的容量
     ///
-    /// Refer to [`capacity`](hb::HashSet::capacity) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -343,12 +329,9 @@ impl<T, S> HashSet<T, S> {
         self.0.capacity()
     }
 
-    /// An iterator visiting all elements in arbitrary order.
-    /// The iterator element type is `&'a T`.
+    /// 返回 `&'a T` 的迭代器
     ///
-    /// Refer to [`iter`](hb::HashSet::iter) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -360,8 +343,7 @@ impl<T, S> HashSet<T, S> {
     /// map.insert("baz");
     ///
     /// for value in map.iter() {
-    ///     // "foo", "bar", "baz"
-    ///     // Note that the above order is not guaranteed
+    ///     // "foo", "bar", "baz" （顺序不确定）
     /// }
     /// #
     /// # assert_eq!(map.iter().count(), 3);
@@ -371,11 +353,9 @@ impl<T, S> HashSet<T, S> {
         self.0.iter()
     }
 
-    /// Returns the number of elements in the set.
+    /// 获取内部元素的数量
     ///
-    /// Refer to [`len`](hb::HashSet::len) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -392,11 +372,9 @@ impl<T, S> HashSet<T, S> {
         self.0.len()
     }
 
-    /// Returns `true` if the set contains no elements.
+    /// 如果内部没有元素，返回 `true`
     ///
-    /// Refer to [`is_empty`](hb::HashSet::is_empty) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -413,11 +391,9 @@ impl<T, S> HashSet<T, S> {
         self.0.is_empty()
     }
 
-    /// Clears the set, returning all elements in an iterator.
+    /// 清理容器并返回内部元素的迭代器，不改变容量
     ///
-    /// Refer to [`drain`](hb::HashSet::drain) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -440,11 +416,9 @@ impl<T, S> HashSet<T, S> {
         self.0.drain()
     }
 
-    /// Retains only the elements specified by the predicate.
+    /// 仅保留符合条件的元素，不改变容量
     ///
-    /// Refer to [`retain`](hb::HashSet::retain) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -467,12 +441,9 @@ impl<T, S> HashSet<T, S> {
         self.0.retain(f);
     }
 
-    /// Drains elements which are true under the given predicate,
-    /// and returns an iterator over the removed items.
+    /// 移除符合条件的元素并返回迭代器，不改变容量
     ///
-    /// Refer to [`extract_if`](hb::HashSet::extract_if) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -498,11 +469,9 @@ impl<T, S> HashSet<T, S> {
         self.0.extract_if(f)
     }
 
-    /// Clears the set, removing all values.
+    /// 清理容器
     ///
-    /// Refer to [`clear`](hb::HashSet::clear) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -522,17 +491,14 @@ impl<T, S> HashSet<T, S> {
         self.0.clear();
     }
 
-    /// Creates a new empty hash set which will use the given hasher to hash
-    /// keys.
+    /// 创建新容器并使用指定的哈希构造器
     ///
-    /// Refer to [`with_hasher`](hb::HashSet::with_hasher) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
     /// # use bevy_platform::hash::FixedHash as SomeHasher;
-    /// // Creates a HashSet with the provided hasher.
+    ///
     /// let map = HashSet::with_hasher(SomeHasher);
     /// #
     /// # let mut map = map;
@@ -544,17 +510,14 @@ impl<T, S> HashSet<T, S> {
         Self(hb::HashSet::with_hasher(hasher))
     }
 
-    /// Creates an empty [`HashSet`] with the specified capacity, using
-    /// `hasher` to hash the keys.
+    /// 创建新容器并指定初始容量和哈希构造器
     ///
-    /// Refer to [`with_capacity_and_hasher`](hb::HashSet::with_capacity_and_hasher) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
     /// # use bevy_platform::hash::FixedHash as SomeHasher;
-    /// // Creates a HashSet with capacity for 5 entries and the provided hasher.
+    ///
     /// let map = HashSet::with_capacity_and_hasher(5, SomeHasher);
     /// #
     /// # let mut map = map;
@@ -566,17 +529,15 @@ impl<T, S> HashSet<T, S> {
         Self(hb::HashSet::with_capacity_and_hasher(capacity, hasher))
     }
 
-    /// Returns a reference to the set's [`BuildHasher`].
-    ///
-    /// Refer to [`hasher`](hb::HashSet::hasher) for further details.
+    /// 返回内部 [`BuildHasher`] 的引用
     #[inline]
     pub fn hasher(&self) -> &S {
         self.0.hasher()
     }
 
-    /// Takes the inner [`HashSet`](hb::HashSet) out of this wrapper.
+    /// 获取内部的 [`hb::HashSet`]
     ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -594,13 +555,9 @@ where
     T: Eq + Hash,
     S: BuildHasher,
 {
-    /// Reserves capacity for at least `additional` more elements to be inserted
-    /// in the [`HashSet`]. The collection may reserve more space to avoid
-    /// frequent reallocations.
+    /// 将容量提升至不少于 `additional` 的量，可能会分配更多空间以避免频繁重分配
     ///
-    /// Refer to [`reserve`](hb::HashSet::reserve) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -619,13 +576,9 @@ where
         self.0.reserve(additional);
     }
 
-    /// Tries to reserve capacity for at least `additional` more elements to be inserted
-    /// in the given `HashSet<K,V>`. The collection may reserve more space to avoid
-    /// frequent reallocations.
+    /// 尝试将容量提升至不少于 `additional` 的量，可能会分配更多空间以避免频繁重分配
     ///
-    /// Refer to [`try_reserve`](hb::HashSet::try_reserve) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -644,13 +597,9 @@ where
         self.0.try_reserve(additional)
     }
 
-    /// Shrinks the capacity of the set as much as possible. It will drop
-    /// down as much as possible while maintaining the internal rules
-    /// and possibly leaving some space in accordance with the resize policy.
+    /// 尽可能削减容量到内部元素数，可能会预留部分空间
     ///
-    /// Refer to [`shrink_to_fit`](hb::HashSet::shrink_to_fit) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -671,57 +620,39 @@ where
         self.0.shrink_to_fit();
     }
 
-    /// Shrinks the capacity of the set with a lower limit. It will drop
-    /// down no lower than the supplied limit while maintaining the internal rules
-    /// and possibly leaving some space in accordance with the resize policy.
-    ///
-    /// Refer to [`shrink_to`](hb::HashSet::shrink_to) for further details.
+    /// 削减容量到不低于目标的值
     #[inline]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.0.shrink_to(min_capacity);
     }
 
-    /// Visits the values representing the difference,
-    /// i.e., the values that are in `self` but not in `other`.
-    ///
-    /// Refer to [`difference`](hb::HashSet::difference) for further details.
+    /// 获取差集
     #[inline]
     pub fn difference<'a>(&'a self, other: &'a Self) -> Difference<'a, T, S> {
         self.0.difference(other)
     }
 
-    /// Visits the values representing the symmetric difference,
-    /// i.e., the values that are in `self` or in `other` but not in both.
-    ///
-    /// Refer to [`symmetric_difference`](hb::HashSet::symmetric_difference) for further details.
+    /// 获取对称差集
     #[inline]
     pub fn symmetric_difference<'a>(&'a self, other: &'a Self) -> SymmetricDifference<'a, T, S> {
         self.0.symmetric_difference(other)
     }
 
-    /// Visits the values representing the intersection,
-    /// i.e., the values that are both in `self` and `other`.
-    ///
-    /// Refer to [`intersection`](hb::HashSet::intersection) for further details.
+    /// 获取交集
     #[inline]
     pub fn intersection<'a>(&'a self, other: &'a Self) -> Intersection<'a, T, S> {
         self.0.intersection(other)
     }
 
-    /// Visits the values representing the union,
-    /// i.e., all the values in `self` or `other`, without duplicates.
-    ///
-    /// Refer to [`union`](hb::HashSet::union) for further details.
+    /// 获取并集
     #[inline]
     pub fn union<'a>(&'a self, other: &'a Self) -> Union<'a, T, S> {
         self.0.union(other)
     }
 
-    /// Returns `true` if the set contains a value.
+    /// 如果指定元素存在，则返回 `true`
     ///
-    /// Refer to [`contains`](hb::HashSet::contains) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -739,11 +670,9 @@ where
         self.0.contains(value)
     }
 
-    /// Returns a reference to the value in the set, if any, that is equal to the given value.
+    /// 获取指定元素的引用，如果存在
     ///
-    /// Refer to [`get`](hb::HashSet::get) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -761,12 +690,9 @@ where
         self.0.get(value)
     }
 
-    /// Inserts the given `value` into the set if it is not present, then
-    /// returns a reference to the value in the set.
+    /// 获取指定元素的引用，如果没有则插入
     ///
-    /// Refer to [`get_or_insert`](hb::HashSet::get_or_insert) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -779,12 +705,9 @@ where
         self.0.get_or_insert(value)
     }
 
-    /// Inserts a value computed from `f` into the set if the given `value` is
-    /// not present, then returns a reference to the value in the set.
+    /// 获取指定元素的引用，如果没有则插入
     ///
-    /// Refer to [`get_or_insert_with`](hb::HashSet::get_or_insert_with) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -801,11 +724,9 @@ where
         self.0.get_or_insert_with(value, f)
     }
 
-    /// Gets the given value's corresponding entry in the set for in-place manipulation.
+    /// 获取指定元素对应的条目
     ///
-    /// Refer to [`entry`](hb::HashSet::entry) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -820,38 +741,27 @@ where
         self.0.entry(value)
     }
 
-    /// Returns `true` if `self` has no elements in common with `other`.
-    /// This is equivalent to checking for an empty intersection.
-    ///
-    /// Refer to [`is_disjoint`](hb::HashSet::is_disjoint) for further details.
+    /// 如果 `self` 与 `other` 没有共同的元素，则返回`true`
     #[inline]
     pub fn is_disjoint(&self, other: &Self) -> bool {
         self.0.is_disjoint(other)
     }
 
-    /// Returns `true` if the set is a subset of another,
-    /// i.e., `other` contains at least all the values in `self`.
-    ///
-    /// Refer to [`is_subset`](hb::HashSet::is_subset) for further details.
+    /// 如果 `self` 是 `other` 的子集，返回 `true`
     #[inline]
     pub fn is_subset(&self, other: &Self) -> bool {
         self.0.is_subset(other)
     }
 
-    /// Returns `true` if the set is a superset of another,
-    /// i.e., `self` contains at least all the values in `other`.
-    ///
-    /// Refer to [`is_superset`](hb::HashSet::is_superset) for further details.
+    /// 如果 `self` 是 `other` 的超集，返回 `true`
     #[inline]
     pub fn is_superset(&self, other: &Self) -> bool {
         self.0.is_superset(other)
     }
 
-    /// Adds a value to the set.
+    /// 添加元素
     ///
-    /// Refer to [`insert`](hb::HashSet::insert) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -866,12 +776,9 @@ where
         self.0.insert(value)
     }
 
-    /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
-    /// one. Returns the replaced value.
+    /// 添加元素并替换已有的等效值
     ///
-    /// Refer to [`replace`](hb::HashSet::replace) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -886,12 +793,9 @@ where
         self.0.replace(value)
     }
 
-    /// Removes a value from the set. Returns whether the value was
-    /// present in the set.
+    /// 移除元素，元素存在则返回 `true`
     ///
-    /// Refer to [`remove`](hb::HashSet::remove) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -911,11 +815,9 @@ where
         self.0.remove(value)
     }
 
-    /// Removes and returns the value in the set, if any, that is equal to the given one.
+    /// 取出元素
     ///
-    /// Refer to [`take`](hb::HashSet::take) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -935,12 +837,9 @@ where
         self.0.take(value)
     }
 
-    /// Returns the total amount of memory allocated internally by the hash
-    /// set, in bytes.
+    /// 返回容器总分配的内存字节数
     ///
-    /// Refer to [`allocation_size`](hb::HashSet::allocation_size) for further details.
-    ///
-    /// # Examples
+    /// # 例
     ///
     /// ```rust
     /// # use bevy_platform::collections::HashSet;
@@ -957,24 +856,12 @@ where
         self.0.allocation_size()
     }
 
-    /// Insert a value the set without checking if the value already exists in the set.
+    /// 插入一个值且不检查是否已存在
     ///
-    /// Refer to [`insert_unique_unchecked`](hb::HashSet::insert_unique_unchecked) for further details.
+    /// # 安全性要求
     ///
-    /// # Safety
-    ///
-    /// This operation is safe if a value does not exist in the set.
-    ///
-    /// However, if a value exists in the set already, the behavior is unspecified:
-    /// this operation may panic, loop forever, or any following operation with the set
-    /// may panic, loop forever or return arbitrary result.
-    ///
-    /// That said, this operation (and following operations) are guaranteed to
-    /// not violate memory safety.
-    ///
-    /// However this operation is still unsafe because the resulting `HashSet`
-    /// may be passed to unsafe code which does expect the set to behave
-    /// correctly, and would cause unsoundness as a result.
+    /// 值不存在时使用此方法是安全的。
+    /// 值已存在时，是未定义行为。
     #[expect(
         unsafe_code,
         reason = "re-exporting unsafe method from Hashbrown requires unsafe code"
@@ -992,7 +879,7 @@ where
 {
     type Output = HashSet<T, S>;
 
-    /// Returns the union of `self` and `rhs` as a new `HashSet<T, S>`.
+    /// 返回并集
     #[inline]
     fn bitor(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
         HashSet(self.0.bitor(&rhs.0))
@@ -1005,7 +892,7 @@ where
 {
     type Output = HashSet<T, S>;
 
-    /// Returns the intersection of `self` and `rhs` as a new `HashSet<T, S>`.
+    /// 返回交集
     #[inline]
     fn bitand(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
         HashSet(self.0.bitand(&rhs.0))
@@ -1018,7 +905,7 @@ where
 {
     type Output = HashSet<T, S>;
 
-    /// Returns the symmetric difference of `self` and `rhs` as a new `HashSet<T, S>`.
+    /// 返回对称差
     #[inline]
     fn bitxor(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
         HashSet(self.0.bitxor(&rhs.0))
@@ -1031,7 +918,7 @@ where
 {
     type Output = HashSet<T, S>;
 
-    /// Returns the difference of `self` and `rhs` as a new `HashSet<T, S>`.
+    /// 返回差集
     #[inline]
     fn sub(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
         HashSet(self.0.sub(&rhs.0))
@@ -1042,7 +929,6 @@ impl<T, S> BitOrAssign<&HashSet<T, S>> for HashSet<T, S>
 where
     hb::HashSet<T, S>: for<'a> BitOrAssign<&'a hb::HashSet<T, S>>,
 {
-    /// Modifies this set to contain the union of `self` and `rhs`.
     #[inline]
     fn bitor_assign(&mut self, rhs: &HashSet<T, S>) {
         self.0.bitor_assign(&rhs.0);
@@ -1053,7 +939,6 @@ impl<T, S> BitAndAssign<&HashSet<T, S>> for HashSet<T, S>
 where
     hb::HashSet<T, S>: for<'a> BitAndAssign<&'a hb::HashSet<T, S>>,
 {
-    /// Modifies this set to contain the intersection of `self` and `rhs`.
     #[inline]
     fn bitand_assign(&mut self, rhs: &HashSet<T, S>) {
         self.0.bitand_assign(&rhs.0);
@@ -1064,7 +949,6 @@ impl<T, S> BitXorAssign<&HashSet<T, S>> for HashSet<T, S>
 where
     hb::HashSet<T, S>: for<'a> BitXorAssign<&'a hb::HashSet<T, S>>,
 {
-    /// Modifies this set to contain the symmetric difference of `self` and `rhs`.
     #[inline]
     fn bitxor_assign(&mut self, rhs: &HashSet<T, S>) {
         self.0.bitxor_assign(&rhs.0);
@@ -1075,7 +959,6 @@ impl<T, S> SubAssign<&HashSet<T, S>> for HashSet<T, S>
 where
     hb::HashSet<T, S>: for<'a> SubAssign<&'a hb::HashSet<T, S>>,
 {
-    /// Modifies this set to contain the difference of `self` and `rhs`.
     #[inline]
     fn sub_assign(&mut self, rhs: &HashSet<T, S>) {
         self.0.sub_assign(&rhs.0);
