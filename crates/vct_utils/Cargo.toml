@@ -24,7 +24,7 @@ alloc = [
 
 debug = ["alloc"]
 
-serialize = ["dep:serde", "hashbrown/serde"]
+serde = ["dep:serde", "hashbrown/serde"]
 rayon = ["dep:rayon", "hashbrown/rayon"]
 
 [dependencies]

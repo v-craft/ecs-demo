@@ -226,7 +226,7 @@ impl<T, S> DerefMut for HashSet<T, S> {
     }
 }
 
-#[cfg(feature = "serialize")]
+#[cfg(feature = "serde")]
 impl<T, S> serde::Serialize for HashSet<T, S>
 where
     hb::HashSet<T, S>: serde::Serialize,
@@ -240,7 +240,7 @@ where
     }
 }
 
-#[cfg(feature = "serialize")]
+#[cfg(feature = "serde")]
 impl<'de, T, S> serde::Deserialize<'de> for HashSet<T, S>
 where
     hb::HashSet<T, S>: serde::Deserialize<'de>,

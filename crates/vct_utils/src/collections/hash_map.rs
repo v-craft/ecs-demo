@@ -228,7 +228,7 @@ impl<K, V, S> DerefMut for HashMap<K, V, S> {
     }
 }
 
-#[cfg(feature = "serialize")]
+#[cfg(feature = "serde")]
 impl<K, V, S> serde::Serialize for HashMap<K, V, S>
 where
     hb::HashMap<K, V, S>: serde::Serialize,
@@ -242,7 +242,7 @@ where
     }
 }
 
-#[cfg(feature = "serialize")]
+#[cfg(feature = "serde")]
 impl<'de, K, V, S> serde::Deserialize<'de> for HashMap<K, V, S>
 where
     hb::HashMap<K, V, S>: serde::Deserialize<'de>,
