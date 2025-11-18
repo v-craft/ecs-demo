@@ -1,10 +1,11 @@
+#![doc = include_str!("../README.md")]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![no_std]
 
 pub mod cfg {
-    pub(crate) use vct_os::cfg::*;
     pub use vct_os::cfg::{alloc, std};
-    define_alias! {
+
+    vct_os::cfg::define_alias! {
         #[cfg(feature = "parallel")] => parallel
     }
 }
@@ -23,33 +24,30 @@ cfg::alloc! {
 }
 
 cfg::parallel! {
+    // parallel 特性包含 std
     mod parallel_queue;
     pub use parallel_queue::*;
 }
 
-pub mod hash;
 pub mod cell;
 pub mod debug_info;
 mod default;
-mod once;
+pub mod hash;
 mod on_drop;
+mod once_flag;
 
 pub use default::default;
-pub use once::OnceFlag;
 pub use on_drop::OnDrop;
+pub use once_flag::OnceFlag;
 
 pub mod prelude {
     crate::cfg::alloc! {
         pub use alloc::{
             borrow::ToOwned, boxed::Box, format, string::String, string::ToString, vec, vec::Vec,
         };
-    }
-    // 忽略 `std::prelude` 的内容
-    pub use crate::default;
+    } // 忽略 `std::prelude` 的内容
+
     pub use crate::debug_info::DebugName;
+    pub use crate::default;
     pub use disqualified::ShortName;
 }
-
-
-
-

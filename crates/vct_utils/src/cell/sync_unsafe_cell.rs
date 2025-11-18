@@ -44,7 +44,7 @@ impl<T: ?Sized> SyncUnsafeCell<T> {
     ///
     /// 使用时需遵守别名规则
     #[inline]
-    pub fn get_mut(&mut self) -> &mut T {
+    pub const fn get_mut(&mut self) -> &mut T {
         self.value.get_mut()
     }
 
@@ -56,7 +56,7 @@ impl<T: ?Sized> SyncUnsafeCell<T> {
 
     /// 从可变引用获取 `SyncUnsafeCell` 的可变引用
     #[inline]
-    pub fn from_mut(t: &mut T) -> &mut SyncUnsafeCell<T> {
+    pub const fn from_mut(t: &mut T) -> &mut SyncUnsafeCell<T> {
         let ptr = ptr::from_mut(t) as *mut SyncUnsafeCell<T>;
         unsafe { &mut *ptr }
     }
@@ -68,7 +68,7 @@ impl<T> SyncUnsafeCell<[T]> {
     /// # 例
     ///
     /// ```
-    /// # use vct_os::cell::SyncUnsafeCell;
+    /// # use vct_utils::cell::SyncUnsafeCell;
     ///
     /// let slice: &mut [i32] = &mut [1, 2, 3];
     /// let cell_slice: &SyncUnsafeCell<[i32]> = SyncUnsafeCell::from_mut(slice);
@@ -93,5 +93,31 @@ impl<T: Default> Default for SyncUnsafeCell<T> {
 impl<T> From<T> for SyncUnsafeCell<T> {
     fn from(t: T) -> SyncUnsafeCell<T> {
         SyncUnsafeCell::new(t)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sync_unsafe_cell() {
+        let mut sc = SyncUnsafeCell::new(5);
+        *sc.get_mut() += 10;
+        unsafe {
+            *sc.get() += 100;
+        }
+        assert_eq!(sc.into_inner(), 115);
+
+        let sc = SyncUnsafeCell::<i32>::default();
+        assert_eq!(sc.into_inner(), 0);
+
+        let sc = SyncUnsafeCell::from(1u8);
+        let p = SyncUnsafeCell::raw_get(&raw const sc);
+        assert_eq!(unsafe { *p }, 1u8);
+
+        let mut x = 79;
+        let sc = SyncUnsafeCell::from_mut(&mut x);
+        assert_eq!(*sc.get_mut(), 79);
     }
 }

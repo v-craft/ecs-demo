@@ -2,18 +2,18 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![no_std]
 
-cfg::std!{
+cfg::std! {
     extern crate std;
 }
 
-cfg::alloc!{
+cfg::alloc! {
     extern crate alloc;
 }
 
 pub mod cfg;
-pub mod time;
-pub mod thread;
 pub mod sync;
+pub mod thread;
+pub mod time;
 
 /// 重导出 web 相关库
 #[doc(hidden)]

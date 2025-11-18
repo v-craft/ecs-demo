@@ -1,24 +1,15 @@
-
 pub use sync_impl::{
-    Barrier, BarrierWaitResult,
-    LazyLock,
-    Mutex, MutexGuard,
-    Once, OnceLock, OnceState,
-    LockResult, PoisonError, TryLockResult, TryLockError,
-    RwLock, RwLockReadGuard, RwLockWriteGuard,
-    Arc, Weak,
+    Arc, Barrier, BarrierWaitResult, LazyLock, LockResult, Mutex, MutexGuard, Once, OnceLock,
+    OnceState, PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard, TryLockError, TryLockResult,
+    Weak,
 };
 
 pub mod atomic {
-    pub use core::sync::atomic::Ordering;
     pub use super::atomic_impl::{
-        AtomicI8, AtomicU8,
-        AtomicI16, AtomicU16,
-        AtomicI32, AtomicU32,
-        AtomicI64, AtomicU64,
-        AtomicIsize, AtomicUsize,
-        AtomicBool, AtomicPtr,
+        AtomicBool, AtomicI8, AtomicI16, AtomicI32, AtomicI64, AtomicIsize, AtomicPtr, AtomicU8,
+        AtomicU16, AtomicU32, AtomicU64, AtomicUsize,
     };
+    pub use core::sync::atomic::Ordering;
 }
 
 crate::cfg::switch! {
@@ -30,5 +21,3 @@ crate::cfg::switch! {
         compile_error!("This platform is not supported");
     }
 }
-
-

@@ -9,15 +9,21 @@ use crate::collections::{
     hash_map::{Entry, RawEntryMut}, 
 };
 
+/// 一个预计算了哈希值并使用 [`Hashed`] 作为键的 [`HashMap`]
+/// 
+/// 使用 [`NoOpHash`] 计算哈希值，即直接读取 [`Hashed`] 中存储的 `u64` 数据
 pub type PreHashMap<K, V> = HashMap<Hashed<K>, V, NoOpHash>;
 
 pub trait PreHashMapExt<K, V> {
+    /// 如果元素存在则获取可变引用，不存在则先插入后获取
     fn get_or_insert_with<F: FnOnce() -> V>(&mut self, key: &Hashed<K>, func: F) -> &mut V;
 }
 
 impl<K: Hash + Eq + PartialEq + Clone, V> PreHashMapExt<K, V> for PreHashMap<K, V> {
+    // 此代码可能频繁调用，虽然代码量较多，依然建议内联
+    #[inline]
     fn get_or_insert_with<F: FnOnce() -> V>(&mut self, key: &Hashed<K>, func: F) -> &mut V {
-        let entry = self
+        let entry: RawEntryMut<'_, Hashed<K>, V, NoOpHash> = self
             .raw_entry_mut()
             .from_key_hashed_nocheck(key.hash(), key);
 
@@ -31,7 +37,7 @@ impl<K: Hash + Eq + PartialEq + Clone, V> PreHashMapExt<K, V> for PreHashMap<K, 
     }
 }
 
-
+/// 一个将 [`TypeId`] 作为键的 [`HashMap`]
 pub type TypeIdMap<V> = HashMap<TypeId, V, NoOpHash>;
 
 pub trait TypeIdMapExt<V> {
@@ -89,5 +95,43 @@ mod tests {
         }
 
         Hash::hash(&TypeId::of::<()>(), &mut Hasher);
+    }
+
+    #[test]
+    fn typeid_map() {
+        struct MyType;
+
+        let mut map = TypeIdMap::default();
+        map.insert(TypeId::of::<MyType>(), 7);
+        assert_eq!(map.get(&TypeId::of::<MyType>()), Some(&7));
+
+        let Some(val) = map.insert_type::<MyType>(8) else { panic!(); };
+        assert_eq!(val, 7);
+
+        if let Some(val) = map.get_type_mut::<MyType>() {
+            *val += 10;
+        }
+        assert_eq!(map.get_type::<MyType>(), Some(&18));
+
+        assert_eq!(map.len(), 1usize);
+        map.remove_type::<MyType>();
+        assert_eq!(map.len(), 0usize);
+
+        match map.entry_type::<MyType>() {
+            Entry::Occupied(_) => {
+                panic!("expected vacant entry");
+            }
+            Entry::Vacant(v) => {
+                v.insert(123);
+            }
+        }
+        match map.entry_type::<MyType>() {
+            Entry::Occupied(o) => {
+                assert_eq!(*o.get(), 123);
+            }
+            Entry::Vacant(_) => {
+                panic!("expected occupied entry");
+            }
+        }
     }
 }

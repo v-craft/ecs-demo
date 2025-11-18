@@ -7,6 +7,27 @@
 use core::ptr;
 
 /// 参考 [`Exclusive`](https://doc.rust-lang.org/nightly/std/sync/struct.Exclusive.html)
+///
+/// # 例
+///
+/// ```
+/// # use core::cell::Cell;
+/// # use vct_utils::cell::SyncCell;
+/// async fn other() {}
+/// fn assert_sync<T: Sync>(t: T) {}
+/// struct State<F> {
+///     future: SyncCell<F>
+/// }
+///
+/// assert_sync(State {
+///     future: SyncCell::new(async {
+///         // 包含 Cell，但 SyncCell 依然是 sync 的
+///         let cell = Cell::new(1);
+///         let cell_ref = &cell;
+///         let val = cell_ref.get();
+///     })
+/// });
+/// ```
 #[repr(transparent)]
 pub struct SyncCell<T: ?Sized> {
     inner: T,
@@ -55,5 +76,22 @@ impl<T: ?Sized> SyncCell<T> {
     pub const fn from_mut(r: &mut T) -> &mut SyncCell<T> {
         let ptr = ptr::from_mut(r) as *mut SyncCell<T>;
         unsafe { &mut *ptr }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sync_cell() {
+        let mut x = 5;
+        let sc = SyncCell::from_mut(&mut x);
+        *sc.get_mut() += 10;
+        assert_eq!(*sc.as_ref(), 15);
+
+        let mut sc = SyncCell::new(7);
+        *sc.get_mut() += 10;
+        assert_eq!(sc.into_inner(), 17);
     }
 }

@@ -1,3 +1,7 @@
+//! 用在 debug 模式中调试类型名
+//!
+//! 显示与存储类型名需要启用 debug 特性，这内涵 alloc 特性
+
 use core::ops::Deref;
 pub use disqualified::ShortName;
 
@@ -11,7 +15,10 @@ use core::any::type_name;
 #[cfg(not(feature = "debug"))]
 const FEATURE_DISABLED: &str = "Enable the debug feature to see the name";
 
-
+/// 一个用于类型调试的工具
+///
+/// - 如果 `debug` 特性启用，可以显示类型名。
+/// - 如果 `debug` 特性不启用，此类型不存储任何数据（零开销）。
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DebugName {
     #[cfg(feature = "debug")]
@@ -19,6 +26,7 @@ pub struct DebugName {
 }
 
 impl DebugName {
+    /// 使用 [`core::any::type_name`] 获取类型名
     #[inline]
     pub fn type_name<T>() -> Self {
         DebugName {
@@ -27,12 +35,14 @@ impl DebugName {
         }
     }
 
+    /// 获取内部字符串形式类型名
     #[inline]
     #[cfg(feature = "debug")]
     pub fn as_string(&self) -> String {
         self.name.clone().into_owned()
     }
 
+    /// 获取短类型名
     #[inline]
     pub fn short_name(&self) -> ShortName<'_> {
         #[cfg(feature = "debug")]
@@ -41,6 +51,7 @@ impl DebugName {
         return ShortName(FEATURE_DISABLED);
     }
 
+    /// 通过现有字符串引用创建对象
     #[inline]
     #[cfg_attr(not(feature = "debug"), expect(unused_variables))]
     pub const fn borrowed(value: &'static str) -> Self {
@@ -51,6 +62,7 @@ impl DebugName {
     }
 
     cfg::alloc! {
+        /// 通过现有字符串创建对象
         #[inline]
         #[cfg_attr(not(feature = "debug"), expect(unused_variables))]
         pub fn owned(value: String) -> Self {

@@ -107,7 +107,7 @@ impl Hasher for NoOpHasher {
     }
 
     fn write(&mut self, bytes: &[u8]) {
-        // 通常不建议使用此 write ，自定义场景请直接调用 write_64  
+        // 通常不建议使用此 write ，自定义场景请直接调用 write_64
         // 已确定 TypeId 会调用 write_u64 而非此函数
         self.hash = bytes.iter().fold(self.hash, |hash, b| {
             hash.rotate_left(8).wrapping_add(*b as u64)

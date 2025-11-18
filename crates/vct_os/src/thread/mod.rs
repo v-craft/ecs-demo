@@ -1,7 +1,4 @@
-
-pub use implementation::{
-    sleep
-};
+pub use implementation::sleep;
 
 crate::cfg::switch! {
     crate::cfg::std => {

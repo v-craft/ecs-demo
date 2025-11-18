@@ -1,4 +1,3 @@
-
 pub use implementation::Instant;
 
 crate::cfg::switch! {
@@ -12,5 +11,3 @@ crate::cfg::switch! {
         compile_error!("This platform is not supported");
     }
 }
-
-
