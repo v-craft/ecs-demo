@@ -9,20 +9,12 @@ default = ["parallel"]
 parallel = ["std", "dep:thread_local"]
 
 std = [
-  "alloc",
   "vct_os/std",
   "foldhash/std",
   "serde?/std",
 ]
 
-alloc = [
-  "vct_os/alloc",
-  "disqualified/alloc",
-  "dep:hashbrown",
-  "serde?/alloc",
-]
-
-debug = ["alloc"]
+debug = []
 
 serde = ["dep:serde", "hashbrown/serde"]
 rayon = ["dep:rayon", "hashbrown/rayon"]
@@ -31,7 +23,7 @@ rayon = ["dep:rayon", "hashbrown/rayon"]
 
 vct_os = { path = "../vct_os", default-features = false, version = "0.1.0" }
 
-disqualified = { version = "1.0", default-features = false }
+disqualified = { version = "1.0" }
 thread_local = { version = "1.0", optional = true }
 
 # 哈希容器相关库
@@ -39,8 +31,8 @@ foldhash = { version = "0.2.0", default-features = false }
 hashbrown = { version = "0.16.0", features = [
   "equivalent",
   "raw-entry",
-], optional = true, default-features = false }
-serde = { version = "1", default-features = false, optional = true }
+], default-features = false }
+serde = { version = "1", default-features = false, features = ["alloc"], optional = true }
 rayon = { version = "1", default-features = false, optional = true }
 
 [lints]

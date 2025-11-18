@@ -1,14 +1,11 @@
 //! 用在 debug 模式中调试类型名
 //!
-//! 显示与存储类型名需要启用 debug 特性，这内涵 alloc 特性
+//! 存储与显示类型名需要启用 debug 特性
 
+use alloc::{borrow::Cow, fmt, string::String};
 use core::ops::Deref;
-pub use disqualified::ShortName;
 
-use crate::cfg;
-cfg::alloc! {
-    use alloc::{borrow::Cow, fmt, string::String};
-}
+pub use disqualified::ShortName;
 
 #[cfg(feature = "debug")]
 use core::any::type_name;
@@ -61,15 +58,13 @@ impl DebugName {
         }
     }
 
-    cfg::alloc! {
-        /// 通过现有字符串创建对象
-        #[inline]
-        #[cfg_attr(not(feature = "debug"), expect(unused_variables))]
-        pub fn owned(value: String) -> Self {
-            DebugName {
-                #[cfg(feature = "debug")]
-                name: Cow::Owned(value),
-            }
+    /// 通过现有字符串创建对象
+    #[inline]
+    #[cfg_attr(not(feature = "debug"), expect(unused_variables))]
+    pub fn owned(value: String) -> Self {
+        DebugName {
+            #[cfg(feature = "debug")]
+            name: Cow::Owned(value),
         }
     }
 }
@@ -92,44 +87,42 @@ impl From<&'static str> for DebugName {
     }
 }
 
-cfg::alloc! {
-    impl fmt::Display for DebugName {
-        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+impl fmt::Display for DebugName {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        #[cfg(feature = "debug")]
+        f.write_str(self.name.as_ref())?;
+        #[cfg(not(feature = "debug"))]
+        f.write_str(FEATURE_DISABLED)?;
+
+        Ok(())
+    }
+}
+
+impl From<Cow<'static, str>> for DebugName {
+    #[inline]
+    #[cfg_attr(not(feature = "debug"), expect(unused_variables))]
+    fn from(value: Cow<'static, str>) -> Self {
+        Self {
             #[cfg(feature = "debug")]
-            f.write_str(self.name.as_ref())?;
-            #[cfg(not(feature = "debug"))]
-            f.write_str(FEATURE_DISABLED)?;
-
-            Ok(())
+            name: value,
         }
     }
+}
 
-    impl From<Cow<'static, str>> for DebugName {
-        #[inline]
-        #[cfg_attr(not(feature = "debug"), expect(unused_variables))]
-        fn from(value: Cow<'static, str>) -> Self {
-            Self {
-                #[cfg(feature = "debug")]
-                name: value,
-            }
-        }
+impl From<String> for DebugName {
+    #[inline]
+    fn from(value: String) -> Self {
+        Self::owned(value)
     }
+}
 
-    impl From<String> for DebugName {
-        #[inline]
-        fn from(value: String) -> Self {
-            Self::owned(value)
-        }
-    }
-
-    impl From<DebugName> for Cow<'static, str> {
-        #[inline]
-        #[cfg_attr(not(feature = "debug"), expect(unused_variables))]
-        fn from(value: DebugName) -> Self {
-            #[cfg(feature = "debug")]
-            return value.name;
-            #[cfg(not(feature = "debug"))]
-            return Cow::Borrowed(FEATURE_DISABLED);
-        }
+impl From<DebugName> for Cow<'static, str> {
+    #[inline]
+    #[cfg_attr(not(feature = "debug"), expect(unused_variables))]
+    fn from(value: DebugName) -> Self {
+        #[cfg(feature = "debug")]
+        return value.name;
+        #[cfg(not(feature = "debug"))]
+        return Cow::Borrowed(FEATURE_DISABLED);
     }
 }

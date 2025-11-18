@@ -23,4 +23,3 @@
 - `PreHashMap`: 预计算好键的 `HashMap`。
 - `TypeIdMap`: 键为 `TypeId` 的 `HashMap`。
 
-库默认启用 `std` 支持，大部分容器至少需要 `alloc` 支持。

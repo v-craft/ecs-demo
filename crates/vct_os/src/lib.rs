@@ -6,10 +6,6 @@ cfg::std! {
     extern crate std;
 }
 
-cfg::alloc! {
-    extern crate alloc;
-}
-
 pub mod cfg;
 pub mod sync;
 pub mod thread;

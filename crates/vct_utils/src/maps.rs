@@ -1,16 +1,16 @@
 //! 提供两个额外的 map 容器
-//! 
+//!
 //! 此库仅在启用 alloc 时生效
 use core::{any::TypeId, hash::Hash};
 
-use crate::hash::{Hashed, NoOpHash};
 use crate::collections::{
     HashMap,
-    hash_map::{Entry, RawEntryMut}, 
+    hash_map::{Entry, RawEntryMut},
 };
+use crate::hash::{Hashed, NoOpHash};
 
 /// 一个预计算了哈希值并使用 [`Hashed`] 作为键的 [`HashMap`]
-/// 
+///
 /// 使用 [`NoOpHash`] 计算哈希值，即直接读取 [`Hashed`] 中存储的 `u64` 数据
 pub type PreHashMap<K, V> = HashMap<Hashed<K>, V, NoOpHash>;
 
@@ -105,7 +105,9 @@ mod tests {
         map.insert(TypeId::of::<MyType>(), 7);
         assert_eq!(map.get(&TypeId::of::<MyType>()), Some(&7));
 
-        let Some(val) = map.insert_type::<MyType>(8) else { panic!(); };
+        let Some(val) = map.insert_type::<MyType>(8) else {
+            panic!();
+        };
         assert_eq!(val, 7);
 
         if let Some(val) = map.get_type_mut::<MyType>() {

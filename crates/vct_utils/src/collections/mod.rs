@@ -1,15 +1,13 @@
 //! 提供常用的容器，不含 `Vec` 和 `String`
-//! 
-//! 此库仅在启用 alloc 时生效
-//! 
+//!
 //! # 基于 [`hashbrown`] 库的哈希容器
-//! 
+//!
 //! - [`HashMap`]
 //! - [`HashSet`]
 //! - [`HashTable`]
-//! 
+//!
 //! # alloc 中的容器
-//! 
+//!
 //! - [`BTreeMap`]
 //! - [`BTreeSet`]
 //! - [`BinaryHeap`]

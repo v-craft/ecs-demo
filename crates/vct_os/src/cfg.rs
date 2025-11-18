@@ -82,7 +82,6 @@ pub use crate::define_alias;
 
 define_alias! {
     #[cfg(feature = "std")] => std,
-    #[cfg(feature = "alloc")] => alloc,
     #[cfg(all(target_arch = "wasm32", feature = "web"))] => web,
     #[cfg(panic = "unwind")] => panic_unwind,
     #[cfg(panic = "abort")] => panic_abort,
