@@ -1,18 +1,18 @@
-use core::{any::TypeId, hash::Hash};
 use crate::{
-    hash::{Hashed, NoOpHash},
     collections::{
         HashMap,
         hash_map::{Entry, RawEntryMut},
     },
+    hash::{Hashed, NoOpHash},
 };
+use core::{any::TypeId, hash::Hash};
 
 /// A [`HashMap`] pre-configured to use [`Hashed`] keys and [`PassHash`] passthrough hashing.
 /// Iteration order only depends on the order of insertions and deletions.
 pub type PreHashMap<K, V> = HashMap<Hashed<K>, V, NoOpHash>;
 
 impl<K, V> PreHashMap<K, V> {
-    /// Create a empty [`PreHashMap`] 
+    /// Create a empty [`PreHashMap`]
     #[inline]
     pub const fn new() -> Self {
         Self::with_hasher(NoOpHash)

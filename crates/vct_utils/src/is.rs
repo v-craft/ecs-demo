@@ -9,11 +9,11 @@ pub trait Is {
 
 impl<A: Any> Is for A {
     /// # Example
-    /// 
+    ///
     /// ```
     /// # use vct_reflect::Is;
     /// # use core::any::Any;
-    /// 
+    ///
     /// assert!(u32::is::<u32>());
     /// assert!(!usize::is::<u32>());
     /// ```

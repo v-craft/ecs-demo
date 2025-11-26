@@ -35,7 +35,7 @@ pub struct SyncCell<T: ?Sized> {
 }
 
 // SAFETY: `Sync` only allows multithreaded access via immutable reference.
-// 
+//
 // As `SyncCell` requires an exclusive reference to access the wrapped value for `!Sync` types,
 // marking this type as `Sync` does not actually allow unsynchronized access to the inner value.
 unsafe impl<T: ?Sized> Sync for SyncCell<T> {}
@@ -75,7 +75,7 @@ impl<T: ?Sized> SyncCell<T> {
     #[inline]
     pub const fn from_mut(r: &mut T) -> &mut SyncCell<T> {
         let ptr = ptr::from_mut(r) as *mut SyncCell<T>;
-        // SAFETY: repr is transparent, so refs have the same layout; 
+        // SAFETY: repr is transparent, so refs have the same layout;
         // and `SyncCell` properties are `&mut`-agnostic
         unsafe { &mut *ptr }
     }

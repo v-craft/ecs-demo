@@ -8,6 +8,12 @@ extern crate alloc;
 pub mod cell;
 pub mod info;
 pub mod ops;
+pub mod registry;
 
 mod reflect;
-pub use reflect::{PartialReflect, Reflect, reflect_hasher};
+pub use reflect::{
+    FromReflect, PartialReflect, Reflect, ReflectAlias, Reflectable, reflect_hasher,
+};
+
+mod impls;
+pub use impls::*;

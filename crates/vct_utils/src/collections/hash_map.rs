@@ -654,7 +654,7 @@ impl<K, V, S> HashMap<K, V, S> {
         self.0.clear();
     }
 
-    /// Creates a consuming iterator visiting all the keys in arbitrary order. 
+    /// Creates a consuming iterator visiting all the keys in arbitrary order.
     /// The map cannot be used after calling this. The iterator element type is K.
     ///
     /// # Example
@@ -1086,15 +1086,15 @@ where
     ///
     /// # Safety
     /// This operation is safe if a key does not exist in the map.
-    /// 
-    /// However, if a key exists in the map already, the behavior is unspecified: 
+    ///
+    /// However, if a key exists in the map already, the behavior is unspecified:
     /// this operation may panic, loop forever, or any following operation with the map may panic, loop forever or return arbitrary result.
-    /// 
+    ///
     /// That said, this operation (and following operations) are guaranteed to not violate memory safety.
-    /// 
-    /// However this operation is still unsafe 
-    /// because the resulting HashMap may be passed to unsafe code 
-    /// which does expect the map to behave correctly, 
+    ///
+    /// However this operation is still unsafe
+    /// because the resulting HashMap may be passed to unsafe code
+    /// which does expect the map to behave correctly,
     /// and would cause unsoundness as a result.
     #[expect(
         unsafe_code,
@@ -1110,7 +1110,7 @@ where
     ///
     /// # Safety
     ///
-    /// Calling this method with overlapping keys is undefined behavior 
+    /// Calling this method with overlapping keys is undefined behavior
     /// even if the resulting references are not used.
     #[expect(
         unsafe_code,

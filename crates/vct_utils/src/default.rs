@@ -3,7 +3,7 @@ use core::default::Default;
 /// An ergonomic abbreviation for [`Default::default()`] to make initializing structs easier.
 ///
 /// # Example
-/// 
+///
 /// ```
 /// use vct_utils::default;
 ///

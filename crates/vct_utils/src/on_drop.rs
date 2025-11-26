@@ -12,13 +12,13 @@ use core::mem::ManuallyDrop;
 /// ```
 /// # use vct_utils::OnDrop;
 /// # fn test_panic(do_panic: bool, log: impl FnOnce(&str)) {
-/// 
+///
 ///     let _catch = OnDrop::new(|| log("Oops, a panic occurred and this function didn't complete!"));
-/// 
+///
 ///     // Some code that may panic...
 ///     // ...
 ///     # if do_panic { panic!() }
-/// 
+///
 ///     // Make sure the message only gets printed if a panic occurs.
 ///     // If we remove this line, then the message will be printed regardless of whether a panic occurs
 ///     // -- similar to a `try ... finally` block.

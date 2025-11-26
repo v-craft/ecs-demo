@@ -12,3 +12,12 @@ pub use reflect_impl::Reflect;
 
 mod partial_reflect;
 pub use partial_reflect::PartialReflect;
+
+mod from_reflect;
+pub use from_reflect::FromReflect;
+
+mod reflectable;
+pub use reflectable::Reflectable;
+
+mod reflect_alias;
+pub use reflect_alias::ReflectAlias;

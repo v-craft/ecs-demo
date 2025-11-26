@@ -25,18 +25,20 @@ cfg::parallel! {
     pub use parallel_queue::*;
 }
 
-pub mod name;
 pub mod cell;
-pub mod hash;
 pub mod collections;
+pub mod hash;
+pub mod name;
+pub mod temp;
 
 mod default;
-mod on_drop;
 mod is;
+mod on_drop;
+mod range_invoke;
 
 pub use default::default;
-pub use on_drop::OnDrop;
 pub use is::Is;
+pub use on_drop::OnDrop;
 
 pub mod prelude {
     pub use alloc::{

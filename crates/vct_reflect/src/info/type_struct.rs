@@ -37,10 +37,10 @@ impl Type {
         self.type_path_table.path()
     }
 
-    /// See [`TypePath::short_type_path`]
+    /// See [`TypePath::short_name`]
     #[inline]
-    pub fn short_path(&self) -> &'static str {
-        self.type_path_table.short_path()
+    pub fn short_name(&self) -> &'static str {
+        self.type_path_table.short_name()
     }
 
     /// See [`TypePath::type_ident`]

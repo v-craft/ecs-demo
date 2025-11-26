@@ -21,6 +21,7 @@ pub use tuple_struct_impl::{
 mod tuple_impl;
 pub use tuple_impl::{
     DynamicTuple, GetTupleField, Tuple, TupleFieldIter, tuple_debug, tuple_partial_eq,
+    tuple_try_apply,
 };
 
 mod list_impl;

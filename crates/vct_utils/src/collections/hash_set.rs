@@ -566,7 +566,7 @@ where
     T: Eq + Hash,
     S: BuildHasher,
 {
-    /// Reserves capacity for at least additional more elements to be inserted in the HashSet. 
+    /// Reserves capacity for at least additional more elements to be inserted in the HashSet.
     ///
     /// # Example
     ///
@@ -874,18 +874,18 @@ where
     ///
     /// # Safety
     /// This operation is safe if a value does not exist in the set.
-    /// 
-    /// However, if a value exists in the set already, 
-    /// the behavior is unspecified: this operation may panic, loop forever, 
-    /// or any following operation with the set may panic, 
+    ///
+    /// However, if a value exists in the set already,
+    /// the behavior is unspecified: this operation may panic, loop forever,
+    /// or any following operation with the set may panic,
     /// loop forever or return arbitrary result.
-    /// 
-    /// That said, this operation (and following operations) 
+    ///
+    /// That said, this operation (and following operations)
     /// are guaranteed to not violate memory safety.
-    /// 
-    /// However this operation is still unsafe 
-    /// because the resulting HashSet may be passed to unsafe code 
-    /// which does expect the set to behave correctly, 
+    ///
+    /// However this operation is still unsafe
+    /// because the resulting HashSet may be passed to unsafe code
+    /// which does expect the set to behave correctly,
     /// and would cause unsoundness as a result.
     #[expect(
         unsafe_code,

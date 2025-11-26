@@ -21,7 +21,7 @@ impl TypePath for DynamicSet {
     }
 
     #[inline]
-    fn short_type_path() -> &'static str {
+    fn short_name() -> &'static str {
         "DynamicSet"
     }
 

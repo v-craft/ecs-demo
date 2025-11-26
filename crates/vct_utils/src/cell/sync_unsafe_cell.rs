@@ -88,7 +88,7 @@ impl<T: ?Sized> SyncUnsafeCell<T> {
 
 impl<T> SyncUnsafeCell<[T]> {
     /// Returns a `&[SyncUnsafeCell<T>]` from a `&SyncUnsafeCell<[T]>`.
-    /// 
+    ///
     /// # Examples
     ///
     /// ```

@@ -6,9 +6,10 @@ use vct_utils::collections::TypeIdMap;
 
 mod sealed {
     use super::TypeInfo;
+    use alloc::string::String;
     pub trait TypedProperty: 'static {}
 
-    impl TypedProperty for alloc::string::String {}
+    impl TypedProperty for String {}
     impl TypedProperty for TypeInfo {}
 }
 

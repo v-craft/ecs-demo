@@ -8,7 +8,8 @@ default = ["std"]
 
 std = [
     "vct_utils/std",
-    "vct_os/std"
+    "vct_os/std",
+    "serde/std"
 ]
 
 reflect_docs = []
@@ -16,6 +17,8 @@ reflect_docs = []
 [dependencies]
 vct_utils = { path = "../vct_utils", default-features = false }
 vct_os = { path = "../vct_os", default-features = false }
+
+serde = { version = "1", default-features = false, features = ["alloc"] }
 
 [lints]
 workspace = true

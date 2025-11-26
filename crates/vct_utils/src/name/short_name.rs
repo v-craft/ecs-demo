@@ -1,20 +1,18 @@
-use core::{
-    any::type_name, fmt
-};
+use core::{any::type_name, fmt};
 
 /// Used to parse short_name from full_names
-/// 
+///
 /// It's a parsing tool, instead of string container.
-/// 
+///
 /// # Safety
 /// - Must be a valid UTF-8 encoded string.
 ///   Otherwise, it may panic.
-/// 
+///
 /// # Validity
 /// - The wrong path will not panic, but the returned result is uncertain.
-/// 
+///
 /// # Example
-/// 
+///
 /// ```
 /// use vct_utils::name::ShortName;
 /// use std::string::ToString;
@@ -55,7 +53,7 @@ impl<'a> From<&'a str> for ShortName<'a> {
 
 impl<'a> ShortName<'a> {
     /// Gets the original name before shortening.
-    /// 
+    ///
     /// use ToString::to_string to get short_name
     #[inline]
     pub const fn original(&self) -> &'a str {
@@ -63,7 +61,7 @@ impl<'a> ShortName<'a> {
     }
 }
 
-impl <'a> fmt::Debug for ShortName<'a> {
+impl<'a> fmt::Debug for ShortName<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let full_name = self.0.trim();
 
@@ -77,15 +75,15 @@ impl <'a> fmt::Debug for ShortName<'a> {
             // let rest_of_str = full_name.get(index..end_index).unwrap_or_default();
 
             if let Some(special_index) = rest_of_str.find(|c: char| {
-                (c == ' ') ||
-                (c == '<') ||
-                (c == '>') ||
-                (c == '(') ||
-                (c == ')') ||
-                (c == '[') ||
-                (c == ']') ||
-                (c == ',') ||
-                (c == ';')
+                (c == ' ')
+                    || (c == '<')
+                    || (c == '>')
+                    || (c == '(')
+                    || (c == ')')
+                    || (c == '[')
+                    || (c == ']')
+                    || (c == ',')
+                    || (c == ';')
             }) {
                 let segment = &rest_of_str[0..special_index];
                 // ↑ Safety: special_index < end_index, valid UTF-8 encoded string
@@ -98,7 +96,7 @@ impl <'a> fmt::Debug for ShortName<'a> {
                 // ↑ Safety: special_index < end_index, valid UTF-8 encoded string
                 f.write_str(special_char)?;
 
-                // When the `begin` of the slice `[begin...]` is at the end, 
+                // When the `begin` of the slice `[begin...]` is at the end,
                 // it is safe and will return an empty slice.
                 match special_char {
                     ">" | ")" | "]" if rest_of_str[special_index + 1..].starts_with("::") => {
@@ -118,7 +116,6 @@ impl <'a> fmt::Debug for ShortName<'a> {
                         index += 1;
                     }
                 }
-
             } else {
                 // If there are no special characters left, we're done!
                 f.write_str(parse_type_name(rest_of_str))?;
@@ -170,18 +167,12 @@ mod tests {
 
     #[test]
     fn path_separated() {
-        assert_eq!(
-            ShortName("my_crate::make_fun").to_string(),
-            "make_fun"
-        );
+        assert_eq!(ShortName("my_crate::make_fun").to_string(), "make_fun");
     }
 
     #[test]
     fn tuple_type() {
-        assert_eq!(
-            ShortName("(String, u64)").to_string(),
-            "(String, u64)"
-        );
+        assert_eq!(ShortName("(String, u64)").to_string(), "(String, u64)");
     }
 
     #[test]
@@ -212,7 +203,8 @@ mod tests {
     #[test]
     fn generics() {
         assert_eq!(
-            ShortName("render::camera::camera::extract_cameras<render::camera::bundle::Camera3d>").to_string(),
+            ShortName("render::camera::camera::extract_cameras<render::camera::bundle::Camera3d>")
+                .to_string(),
             "extract_cameras<Camera3d>"
         );
     }
@@ -228,7 +220,10 @@ mod tests {
     #[test]
     fn sub_path_after_closing_bracket() {
         assert_eq!(
-            ShortName("asset::assets::Assets<scene::dynamic_scene::DynamicScene>::asset_event_system").to_string(),
+            ShortName(
+                "asset::assets::Assets<scene::dynamic_scene::DynamicScene>::asset_event_system"
+            )
+            .to_string(),
             "Assets<DynamicScene>::asset_event_system"
         );
         assert_eq!(

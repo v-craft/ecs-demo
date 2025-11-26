@@ -20,7 +20,7 @@ impl TypePath for DynamicTuple {
     }
 
     #[inline]
-    fn short_type_path() -> &'static str {
+    fn short_name() -> &'static str {
         "DynamicTuple"
     }
 
@@ -108,14 +108,8 @@ impl PartialReflect for DynamicTuple {
     }
 
     fn try_apply(&mut self, value: &dyn PartialReflect) -> Result<(), ApplyError> {
-        let other = value.reflect_ref().as_tuple()?;
-
-        for (idx, other_field) in other.iter_fields().enumerate() {
-            if let Some(field) = self.field_mut(idx) {
-                field.try_apply(other_field)?;
-            }
-        }
-        Ok(())
+        // Not Inline: `tuple_try_apply` is inline always
+        tuple_try_apply(self, value)
     }
 
     #[inline]
@@ -352,6 +346,22 @@ pub fn tuple_partial_eq<T: Tuple + ?Sized>(x: &T, y: &dyn PartialReflect) -> Opt
         }
     }
     Some(true)
+}
+
+/// A function used to assist in the implementation of `try_apply`
+///
+/// It's `inline(always)`, Usually recommended only for impl `try_apply`.
+#[inline(always)]
+pub fn tuple_try_apply<T: Tuple>(x: &mut T, y: &dyn PartialReflect) -> Result<(), ApplyError> {
+    let y = y.reflect_ref().as_tuple()?;
+
+    for (idx, y_field) in y.iter_fields().enumerate() {
+        if let Some(field) = x.field_mut(idx) {
+            field.try_apply(y_field)?;
+        }
+    }
+
+    Ok(())
 }
 
 /// The default debug formatter for [`Tuple`] types.

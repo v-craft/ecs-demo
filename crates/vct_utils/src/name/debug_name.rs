@@ -1,9 +1,9 @@
 //! 用在 debug 模式中调试类型名
 //!
 //! 存储与显示类型名需要启用 debug 特性
-use core::fmt;
-use alloc::{borrow::Cow, string::String};
 use super::ShortName;
+use alloc::{borrow::Cow, string::String};
+use core::fmt;
 
 #[cfg(feature = "debug")]
 use core::any::type_name;
@@ -11,11 +11,11 @@ use core::any::type_name;
 const FEATURE_DISABLED: &str = "Enable the debug feature to see the name";
 
 /// A container for storing type names.
-/// 
+///
 /// - If the `debug` feature is enabled, the actual name will be used.
 /// - If it is disabled, it does not store any content,
 ///   and any access will return a fixed FEATURE_DISABLED string.
-/// 
+///
 /// Wrapper to help debugging ECS issues.
 /// This is used to display the names of systems, components, ...
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -36,8 +36,8 @@ impl DebugName {
     }
 
     /// Return the &str hold by this `DebugName`
-    /// 
-    /// use `ToString::to_string` to get String 
+    ///
+    /// use `ToString::to_string` to get String
     #[inline]
     pub fn as_ref(&self) -> &str {
         #[cfg(feature = "debug")]
@@ -127,8 +127,8 @@ impl From<DebugName> for Cow<'static, str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::{format, string::ToString};
     use crate::cfg;
+    use alloc::{format, string::ToString};
 
     #[test]
     fn feature_disable_short_name() {
@@ -142,14 +142,14 @@ mod tests {
         // test: of borrowed owned as_ref to_string display short_name
         let k = DebugName::of::<u64>();
         let displayed = format!("{}", k);
-        let s =  "12345";
+        let s = "12345";
         let k1 = DebugName::borrowed(s);
         let k2 = DebugName::owned(s.to_string());
         let k3 = DebugName::borrowed("my::module::TypeName");
         let short = k3.to_string();
 
         assert_eq!(k1.as_ref(), k2.as_ref());
-        cfg::debug!{
+        cfg::debug! {
             if {
                 assert_eq!(k.as_ref(), "u64");
                 assert_eq!(displayed, "u64");
@@ -179,5 +179,4 @@ mod tests {
         assert_eq!(k1, k5);
         assert_eq!(k2, k6);
     }
-
 }

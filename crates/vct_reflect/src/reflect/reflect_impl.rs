@@ -88,7 +88,7 @@ impl TypePath for dyn Reflect {
         "dyn vct_reflect::Reflect"
     }
     #[inline]
-    fn short_type_path() -> &'static str {
+    fn short_name() -> &'static str {
         "dyn Reflect"
     }
 }

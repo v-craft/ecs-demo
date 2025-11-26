@@ -54,3 +54,6 @@ pub use type_info_impl::{ReflectKind, ReflectKindError, TypeInfo};
 
 mod typed;
 pub use typed::{DynamicTyped, MaybeTyped, Typed};
+
+mod type_info_stack;
+pub(crate) use type_info_stack::TypeInfoStack;

@@ -105,7 +105,7 @@ impl<V: Copy, H> Copy for Hashed<V, H> {}
 impl<V: Eq, H> Eq for Hashed<V, H> {}
 
 /// A no-op hash that only works on `u64`s.
-/// 
+///
 #[derive(Debug, Default)]
 pub struct NoOpHasher {
     hash: u64,
@@ -137,20 +137,20 @@ impl BuildHasher for NoOpHash {
     #[inline]
     fn build_hasher(&self) -> Self::Hasher {
         // manually inline
-        NoOpHasher{ hash: 0 }
+        NoOpHasher { hash: 0 }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core::any::TypeId;
     use alloc::{format, string::String};
+    use core::any::TypeId;
 
     #[test]
     fn typeid_hash_call() {
         // Ensure that the hash of `TypeId` will call `write_u64` instead of `write`
-        struct  MyHasher(u64);
+        struct MyHasher(u64);
 
         impl Hasher for MyHasher {
             fn finish(&self) -> u64 {
@@ -174,7 +174,7 @@ mod tests {
     fn no_op_hash() {
         let mut h0 = NoOpHasher::default();
         let h1 = NoOpHash::build_hasher(&NoOpHash);
-        let h2 = NoOpHasher{ hash: 0 };
+        let h2 = NoOpHasher { hash: 0 };
         assert_eq!(h0.hash, h1.hash);
         assert_eq!(h1.hash, h2.hash);
 
@@ -222,5 +222,4 @@ mod tests {
         assert_ne!(a, b);
         assert_eq!(a, a2);
     }
-
 }
