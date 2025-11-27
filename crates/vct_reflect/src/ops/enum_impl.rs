@@ -159,7 +159,7 @@ impl DynamicEnum {
     /// This is functionally the same as [`DynamicEnum::from`] except it takes a reference.
     pub fn from_ref<TEnum: Enum + ?Sized>(value: &TEnum) -> Self {
         let type_info = value.get_target_type_info();
-        let mut dyn_enum = match value.variant_type() {
+        let mut dyn_enum = match value.variant_kind() {
             VariantKind::Unit => DynamicEnum::new_with_index(
                 value.variant_index(),
                 value.variant_name().to_owned(),
@@ -234,7 +234,7 @@ impl PartialReflect for DynamicEnum {
     fn try_apply(&mut self, value: &dyn PartialReflect) -> Result<(), ApplyError> {
         let other = value.reflect_ref().as_enum()?;
         if self.variant_name() == other.variant_name() {
-            match other.variant_type() {
+            match other.variant_kind() {
                 VariantKind::Struct => {
                     for other_field in other.iter_fields() {
                         let name = other_field.name().unwrap();
@@ -253,7 +253,7 @@ impl PartialReflect for DynamicEnum {
                 VariantKind::Unit => {}
             }
         } else {
-            let dyn_variant = match other.variant_type() {
+            let dyn_variant = match other.variant_kind() {
                 VariantKind::Unit => DynamicVariant::Unit,
                 VariantKind::Tuple => {
                     let mut dyn_tuple = DynamicTuple::default();
@@ -303,7 +303,7 @@ impl PartialReflect for DynamicEnum {
         TypeId::of::<Self>().hash(&mut hasher);
 
         self.variant_name().hash(&mut hasher);
-        self.variant_type().hash(&mut hasher);
+        self.variant_kind().hash(&mut hasher);
         for field in self.iter_fields() {
             hasher.write_u64(field.value().reflect_hash()?);
         }
@@ -400,7 +400,7 @@ pub trait Enum: PartialReflect {
     fn variant_index(&self) -> usize;
 
     /// The type of the current variant.
-    fn variant_type(&self) -> VariantKind;
+    fn variant_kind(&self) -> VariantKind;
 
     /// Creates a new [`DynamicEnum`] from this enum.
     #[inline]
@@ -410,8 +410,8 @@ pub trait Enum: PartialReflect {
 
     /// Returns true if the current variant's type matches the given one.
     #[inline]
-    fn is_variant(&self, variant_type: VariantKind) -> bool {
-        self.variant_type() == variant_type
+    fn is_variant(&self, variant_kind: VariantKind) -> bool {
+        self.variant_kind() == variant_kind
     }
 
     /// Will return `None` if [`TypeInfo`] is not available.
@@ -494,7 +494,7 @@ impl Enum for DynamicEnum {
     }
 
     #[inline]
-    fn variant_type(&self) -> VariantKind {
+    fn variant_kind(&self) -> VariantKind {
         match &self.variant {
             DynamicVariant::Unit => VariantKind::Unit,
             DynamicVariant::Tuple(..) => VariantKind::Tuple,
@@ -519,11 +519,11 @@ pub fn enum_partial_eq<TEnum: Enum + ?Sized>(x: &TEnum, y: &dyn PartialReflect) 
         return Some(false);
     }
 
-    if x.variant_type() != y.variant_type() {
+    if x.variant_kind() != y.variant_kind() {
         return Some(false);
     }
 
-    match x.variant_type() {
+    match x.variant_kind() {
         VariantKind::Unit => Some(true),
         VariantKind::Tuple => {
             for (idx, field) in x.iter_fields().enumerate() {
@@ -558,7 +558,7 @@ pub fn enum_partial_eq<TEnum: Enum + ?Sized>(x: &TEnum, y: &dyn PartialReflect) 
 pub fn enum_debug(dyn_enum: &dyn Enum, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     // This function should only be used to impl `PartialReflect::debug`
     // Non Inline: only be compiled once -> reduce compilation times
-    match dyn_enum.variant_type() {
+    match dyn_enum.variant_kind() {
         VariantKind::Unit => f.write_str(dyn_enum.variant_name()),
         VariantKind::Tuple => {
             let mut debug = f.debug_tuple(dyn_enum.variant_name());

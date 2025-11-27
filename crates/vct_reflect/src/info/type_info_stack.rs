@@ -2,6 +2,9 @@ use crate::info::TypeInfo;
 use alloc::vec::Vec;
 use core::fmt;
 
+/// Helper struct for managing a stack of [`TypeInfo`] instances.
+///
+/// This is useful for tracking the type hierarchy when serializing and deserializing types.
 #[derive(Default, Clone)]
 pub(crate) struct TypeInfoStack(Vec<&'static TypeInfo>);
 

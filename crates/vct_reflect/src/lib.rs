@@ -5,6 +5,7 @@ extern crate std;
 
 extern crate alloc;
 
+pub mod access;
 pub mod cell;
 pub mod info;
 pub mod ops;
@@ -16,4 +17,3 @@ pub use reflect::{
 };
 
 mod impls;
-pub use impls::*;

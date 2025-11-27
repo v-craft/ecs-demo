@@ -90,7 +90,7 @@ impl<'a> Iterator for VariantFieldIter<'a> {
     type Item = VariantField<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let value = match self.container.variant_type() {
+        let value = match self.container.variant_kind() {
             VariantKind::Unit => None,
             VariantKind::Tuple => Some(VariantField::Tuple(self.container.field_at(self.index)?)),
             VariantKind::Struct => {

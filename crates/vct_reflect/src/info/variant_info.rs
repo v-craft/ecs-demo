@@ -39,6 +39,16 @@ pub enum VariantKind {
     Unit,
 }
 
+impl fmt::Display for VariantKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Struct => f.pad("Struct"),
+            Self::Tuple => f.pad("Tuple"),
+            Self::Unit => f.pad("Unit"),
+        }
+    }
+}
+
 /// Type info for struct variants.
 ///
 /// ```ignore
@@ -267,7 +277,7 @@ macro_rules! impl_cast_fn {
                 Self::$kind(info) => Ok(info),
                 _ => Err(VariantKindError {
                     expected: VariantKind::$kind,
-                    received: self.variant_type(),
+                    received: self.variant_kind(),
                 }),
             }
         }
@@ -299,7 +309,7 @@ impl VariantInfo {
     ///
     /// [kind]: VariantKind
     #[inline]
-    pub fn variant_type(&self) -> VariantKind {
+    pub fn variant_kind(&self) -> VariantKind {
         match self {
             Self::Struct(_) => VariantKind::Struct,
             Self::Tuple(_) => VariantKind::Tuple,

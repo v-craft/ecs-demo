@@ -24,15 +24,15 @@ pub enum ReflectKind {
 impl fmt::Display for ReflectKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ReflectKind::Struct => f.pad("Struct"),
-            ReflectKind::TupleStruct => f.pad("TupleStruct"),
-            ReflectKind::Tuple => f.pad("Tuple"),
-            ReflectKind::List => f.pad("List"),
-            ReflectKind::Array => f.pad("Array"),
-            ReflectKind::Map => f.pad("Map"),
-            ReflectKind::Set => f.pad("Set"),
-            ReflectKind::Enum => f.pad("Enum"),
-            ReflectKind::Opaque => f.pad("Opaque"),
+            Self::Struct => f.pad("Struct"),
+            Self::TupleStruct => f.pad("TupleStruct"),
+            Self::Tuple => f.pad("Tuple"),
+            Self::List => f.pad("List"),
+            Self::Array => f.pad("Array"),
+            Self::Map => f.pad("Map"),
+            Self::Set => f.pad("Set"),
+            Self::Enum => f.pad("Enum"),
+            Self::Opaque => f.pad("Opaque"),
         }
     }
 }
