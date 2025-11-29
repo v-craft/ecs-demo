@@ -8,6 +8,7 @@ resolver = "3"
 members = [
     "crates/vct_cfg",
     "crates/vct_ecs",
+    "crates/vct_macro_utils",
     "crates/vct_os",
     "crates/vct_ptr",
     "crates/vct_reflect",

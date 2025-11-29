@@ -2,6 +2,8 @@ use crate::{PartialReflect, Reflect};
 use alloc::boxed::Box;
 
 /// A trait that enables types to be dynamically constructed from reflected data.
+/// 
+/// The type that supports Reflect should also implement this Trait.
 pub trait FromReflect: Reflect + Sized {
     /// Constructs a concrete instance of `Self` from a reflected value.
     fn from_reflect(reflect: &dyn PartialReflect) -> Option<Self>;

@@ -7,7 +7,7 @@ edition = "2024"
 proc-macro = true
 
 [features]
-default = []
+default = ["reflect_docs"]
 
 reflect_docs = []
 
@@ -18,9 +18,12 @@ auto_register_inventory = ["auto_register"]
 auto_register_static = ["auto_register", "dep:uuid"]
 
 [dependencies]
-proc-macro2 = "1.0"
-quote = "1.0"
+vct_macro_utils = { path = "../../vct_macro_utils" }
+
 syn = { version = "2.0", features = ["full", "extra-traits"] }
+quote = "1.0"
+proc-macro2 = "1.0"
+
 indexmap = "2.0"
 uuid = { version = "1.18", default-features = false, features = [
   "v4",

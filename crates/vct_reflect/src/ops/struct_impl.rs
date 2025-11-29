@@ -217,7 +217,7 @@ impl<'a> IntoIterator for &'a DynamicStruct {
     }
 }
 
-/// A trait used to power [struct-like] operations via [reflection].
+/// A trait used to power [struct-like] operations via [reflection].(Including unit struct)
 ///
 /// This trait uses the [`Reflect`] trait to allow implementors to have their fields
 /// be dynamically addressed by both name and index.

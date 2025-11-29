@@ -12,7 +12,7 @@ use alloc::boxed::Box;
 use vct_os::sync::Arc;
 use vct_utils::collections::HashMap;
 
-/// Container for storing compile-time struct information
+/// Container for storing compile-time struct information (including unit struct)
 #[derive(Clone, Debug)]
 pub struct StructInfo {
     ty: Type,

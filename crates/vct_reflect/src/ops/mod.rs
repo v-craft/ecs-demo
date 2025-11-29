@@ -40,4 +40,4 @@ mod variant_impl;
 pub use variant_impl::{DynamicVariant, VariantField, VariantFieldIter};
 
 mod enum_impl;
-pub use enum_impl::*;
+pub use enum_impl::{DynamicEnum, Enum, enum_debug, enum_partial_eq};

@@ -10,5 +10,4 @@ pub use from_type::FromType;
 mod type_registry;
 pub use type_registry::{TypeRegistry, TypeRegistryArc};
 
-mod traits;
-pub use traits::*;
+pub mod traits;

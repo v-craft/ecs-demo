@@ -4,20 +4,24 @@ use alloc::boxed::Box;
 /// See [`Default`]
 #[derive(Clone)]
 pub struct TypeTraitDefault {
-    default: fn() -> Box<dyn Reflect>,
+    func: fn() -> Box<dyn Reflect>,
 }
 
 impl TypeTraitDefault {
+    /// Call T's [`Default`]
+    /// 
+    /// [`TypeTraitDefault`] does not have a type flag, 
+    /// but the functions used internally are type specific.
     #[inline(always)]
     pub fn default(&self) -> Box<dyn Reflect> {
-        (self.default)()
+        (self.func)()
     }
 }
 
 impl<T: Default + Reflect> FromType<T> for TypeTraitDefault {
     fn from_type() -> Self {
         Self {
-            default: || Box::<T>::default(),
+            func: || Box::<T>::default(),
         }
     }
 }

@@ -294,10 +294,11 @@ impl core::error::Error for AccessError<'_> {}
 
 /// An [`Access`] combined with an `offset` for more helpful error reporting.
 ///
-/// Offset is only used to display error messages, unrelated to access.
+/// `offset` is only used to display error messages, unrelated to access.
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct OffsetAccessor<'a> {
     pub accessor: Accessor<'a>,
+    /// only used to display error messages
     pub offset: Option<usize>,
 }
 

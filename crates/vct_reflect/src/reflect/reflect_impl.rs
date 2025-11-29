@@ -107,7 +107,7 @@ impl Typed for dyn Reflect {
 }
 
 // Example: impl_reflect_trait!(<T> for MyStruct<T> where T: 'static)
-macro_rules! impl_reflect_trait {
+macro_rules! _impl_reflect_trait {
     ($(<$($id:ident),* $(,)?>)? for $ty:ty $(where $($tt:tt)*)?) => {
         impl $(<$($id),*>)? $crate::Reflect for $ty $(where $($tt)*)? {
             #[inline]
@@ -137,4 +137,4 @@ macro_rules! impl_reflect_trait {
     };
 }
 
-pub(crate) use impl_reflect_trait;
+// pub(crate) use impl_reflect_trait;
