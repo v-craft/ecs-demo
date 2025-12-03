@@ -30,22 +30,55 @@ impl CustomAttributes {
         self.push(input.parse()?)
     }
 
-    /// Generates a `TokenStream` for `CustomAttributes` construction.
-    pub fn to_tokens(&self, vct_reflect_path: &Path) -> TokenStream {
-        // See vct_reflect::info::attribute.rs
-        let custom_attributes_path = crate::path::custom_attributes_(vct_reflect_path);
+    /// If `custom_attributes` is empty, this function will return an empty token stream.
+    /// 
+    /// Otherwise, it will return content similar to this:
+    /// 
+    /// ```ignore
+    /// .with_custom_attributes(
+    ///     #custom_attributes_path::new()
+    ///         (.with_attribute( ... ))*
+    /// )
+    /// ```
+    /// 
+    /// The type path will be parsed before returning.
+    pub fn get_expression_with(&self, vct_reflect_path: &Path) -> TokenStream {
+        if self.is_empty() {
+            return crate::utils::empty();
+        }
 
-        let attributes = self.attributes.iter().map(|value| {
+        let with_attributes = self.attributes.iter().map(|value| {
             quote! {
                 .with_attribute(#value)
             }
         });
-        
+
+        let custom_attributes_ = crate::path::custom_attributes_(vct_reflect_path);
         quote! {
-            #custom_attributes_path::new()
-                #(#attributes)*
+            .with_custom_attributes(
+                #custom_attributes_::new()
+                    #(#with_attributes)*
+            )
         }
     }
+
+
+    // /// Generates a `TokenStream` for `CustomAttributes` construction.
+    // pub fn to_tokens(&self, vct_reflect_path: &Path) -> TokenStream {
+    //     // See vct_reflect::info::attribute.rs
+    //     let custom_attributes_path = crate::path::custom_attributes_(vct_reflect_path);
+
+    //     let attributes = self.attributes.iter().map(|value| {
+    //         quote! {
+    //             .with_attribute(#value)
+    //         }
+    //     });
+        
+    //     quote! {
+    //         #custom_attributes_path::new()
+    //             #(#attributes)*
+    //     }
+    // }
 }
 
 

@@ -1,5 +1,5 @@
 use proc_macro2::Span;
-use syn::{Attribute, Path, Meta, Token, MacroDelimiter, MetaList, parse::ParseStream, MetaNameValue, spanned::Spanned};
+use syn::{Attribute, Path, Meta, Token, MacroDelimiter, MetaList, parse::ParseStream, MetaNameValue};
 
 use crate::{
     REFLECT_ATTRIBUTE_NAME,
@@ -57,8 +57,8 @@ pub(crate) struct FieldAttributes {
     pub docs: ReflectDocs,
     /// Determines how this field should be ignored if at all.
     pub ignore: FieldIgnoreKind,
-    /// Sets the default behavior of this field.
-    pub default: FieldDefaultKind,
+    // /// Sets the default behavior of this field.
+    // pub default: FieldDefaultKind,
 }
 
 impl FieldAttributes {
@@ -106,7 +106,6 @@ impl FieldAttributes {
             Ok(())
         })
     }
-
 
     fn parse_inner_attribute(&mut self, input: ParseStream) -> syn::Result<()> {
         let lookahead = input.lookahead1();

@@ -1,6 +1,6 @@
 use crate::{
     Reflect,
-    info::{TypeInfo, TypePath, Typed},
+    info::{TypeInfo, Typed},
 };
 use alloc::boxed::Box;
 use core::{
@@ -48,7 +48,7 @@ pub struct TypeTraits {
 
 impl TypeTraits {
     #[inline]
-    pub fn of<T: Reflect + Typed + TypePath>() -> Self {
+    pub fn of<T: Reflect + Typed>() -> Self {
         Self {
             trait_map: TypeIdMap::new(),
             type_info: T::type_info(),

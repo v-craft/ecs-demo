@@ -317,13 +317,8 @@ macro_rules! impl_cast_reflect_fn {
 
         fn set(&mut self, value: Box<dyn Reflect>) -> Result<(), Box<dyn Reflect>> {
             // Manually inline
-            match value.take::<Self>() {
-                Ok(val) => {
-                    *self = val;
-                    Ok(())
-                }
-                Err(err) => Err(err),
-            }
+            *self = value.take::<Self>()?;
+            Ok(())
         }
     };
 }

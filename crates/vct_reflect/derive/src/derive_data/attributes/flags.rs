@@ -58,7 +58,7 @@ pub(crate) enum MethodFlag {
     /// When there are sub fields that are not supported, this type is also not supported.  
     /// For `reflect_debug`, this is eq to `Default`.  
     /// For example: `#[reflect(clone = Internal)]`.
-    Internal(Span),
+    Internal,
     /// This option will implement the function through the same name Trait(the type must implemented this trait), 
     /// This is usually more efficient than `Internal`.  
     /// For example: `#[reflect(clone = Clone)]`.
@@ -75,7 +75,6 @@ pub(crate) struct MethodImplFlags {
     pub reflect_debug: MethodFlag,
     pub reflect_hash: MethodFlag,
     pub reflect_partial_eq: MethodFlag,
-    pub reflect_default: MethodFlag,
 }
 
 

@@ -2,7 +2,7 @@
 
 use crate::path::fp::OptionFP;
 use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::{Expr, ExprLit, Lit, MetaNameValue, spanned::Spanned};
 
 
@@ -31,11 +31,6 @@ impl Default for ReflectDocs {
 }
 
 impl ReflectDocs {
-    /// Is the collection empty?
-    pub fn is_empty(&self) -> bool {
-        !self.enabled || self.docs.is_empty()
-    }
-
     /// Parse reflect attribute docs.
     /// 
     /// This function do **not** check if the key is `docs`, 
@@ -63,6 +58,7 @@ impl ReflectDocs {
     ///
     /// Examples:
     /// - `#[reflect(docs = "...")]`
+    /// - `#[reflect(docs = false)]`
     pub fn parse_custom_docs(&mut self, pair: &MetaNameValue) -> syn::Result<()> {
         if let Expr::Lit(expr_lit) = &pair.value {
             match &expr_lit.lit {
@@ -77,7 +73,7 @@ impl ReflectDocs {
                 },
                 Lit::Bool(lit_bool) => {
                     if lit_bool.value() {
-                        return Err(syn::Error::new(expr_lit.span(), "Explicit `true` is invalid, it's default value if `reflect_docs` is enabled."));
+                        return Err(syn::Error::new(expr_lit.span(), "Explicit `true` is invalid, it's default value if `reflect_docs` feature is enabled."));
                     }
                     if self.enabled {
                         self.enabled = false;
@@ -94,7 +90,7 @@ impl ReflectDocs {
         Ok(())
     }
 
-    pub fn doc_string(&self) -> Option<String> {
+    fn doc_string(&self) -> Option<String> {
         if !self.enabled || self.docs.is_empty() {
             return None;
         }
@@ -102,7 +98,7 @@ impl ReflectDocs {
         let len = self.docs.len();
         let capacity = self.docs.iter().map(String::len).sum::<usize>() + len;
         if capacity == len {
-            return None; // Empty document
+            return None; // Empty document content
         }
 
         let mut res = String::with_capacity(capacity);
@@ -114,15 +110,37 @@ impl ReflectDocs {
 
         Some(res)
     }
-}
 
-impl ToTokens for ReflectDocs {
-    fn to_tokens(&self, _tokens: &mut TokenStream) {
+    /// If `reflect_docs` feature is disabled or `self.docs` is empty, 
+    /// this function will return an empty token stream.
+    /// 
+    /// Otherwise, it will return content similar to this:
+    /// 
+    /// ```ignore
+    /// .with_docs(::core::option::Option::Some("......"))
+    /// ```
+    pub fn get_expression_with(&self) -> TokenStream {
         if let Some(doc) = self.doc_string() {
-            quote!(#OptionFP::Some(#doc)).to_tokens(_tokens);
+            #[cfg(not(feature = "reflect_docs"))]
+            panic!("`ReflectDocs` is enabled but `reflect_docs` is disabled.");
+
+            quote! {
+                .with_docs(#OptionFP::Some(#doc))
+            }
         } else {
-            quote!(#OptionFP::None).to_tokens(_tokens);
+            crate::utils::empty()
         }
     }
+
 }
+
+// impl ToTokens for ReflectDocs {
+//     fn to_tokens(&self, _tokens: &mut TokenStream) {
+//         if let Some(doc) = self.doc_string() {
+//             quote!(#OptionFP::Some(#doc)).to_tokens(_tokens);
+//         } else {
+//             quote!(#OptionFP::None).to_tokens(_tokens);
+//         }
+//     }
+// }
 

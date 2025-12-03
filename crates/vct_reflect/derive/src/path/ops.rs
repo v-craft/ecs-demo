@@ -9,6 +9,13 @@ pub(crate) fn apply_error_(vct_reflect_path: &syn::Path) -> TokenStream {
 }
 
 #[inline]
+pub(crate) fn reflect_clone_error_(vct_reflect_path: &syn::Path) -> TokenStream {
+    quote! {
+        #vct_reflect_path::ops::ReflectCloneError
+    }
+}
+
+#[inline]
 pub(crate) fn reflect_mut_(vct_reflect_path: &syn::Path) -> TokenStream {  
     quote! {
         #vct_reflect_path::ops::ReflectMut

@@ -12,45 +12,53 @@ pub mod alloc_utils {
         boxed::Box,
         string::ToString,
     };
-}
 
-use crate::{
-    ops::{
-        DynamicArray, DynamicEnum, DynamicList, DynamicMap, DynamicSet, DynamicStruct,
-        DynamicTuple, DynamicTupleStruct,
-    },
-    registry::{GetTypeTraits, TypeRegistry},
-};
-
-pub trait RegisterForReflection {
-    fn __register(_registry: &mut TypeRegistry) {}
-}
-
-impl<T: GetTypeTraits> RegisterForReflection for T {
-    fn __register(registry: &mut TypeRegistry) {
-        registry.register::<T>();
+    // Efficiently connect strings.
+    #[inline(never)]
+    pub fn concat(arr: &[&str]) -> alloc::string::String {
+        let mut len = 0usize;
+        for &item in arr {
+            len += item.len();
+        }
+        let mut res = alloc::string::String::with_capacity(len);
+        for &item in arr {
+            res.push_str(item);
+        }
+        res
     }
 }
 
-impl RegisterForReflection for DynamicEnum {}
 
-impl RegisterForReflection for DynamicTupleStruct {}
 
-impl RegisterForReflection for DynamicStruct {}
+// pub trait RegisterForReflection {
+//     fn __register(_registry: &mut TypeRegistry) {}
+// }
 
-impl RegisterForReflection for DynamicMap {}
+// impl<T: GetTypeTraits> RegisterForReflection for T {
+//     fn __register(registry: &mut TypeRegistry) {
+//         registry.register::<T>();
+//     }
+// }
 
-impl RegisterForReflection for DynamicSet {}
+// impl RegisterForReflection for DynamicEnum {}
 
-impl RegisterForReflection for DynamicList {}
+// impl RegisterForReflection for DynamicTupleStruct {}
 
-impl RegisterForReflection for DynamicArray {}
+// impl RegisterForReflection for DynamicStruct {}
 
-impl RegisterForReflection for DynamicTuple {}
+// impl RegisterForReflection for DynamicMap {}
+
+// impl RegisterForReflection for DynamicSet {}
+
+// impl RegisterForReflection for DynamicList {}
+
+// impl RegisterForReflection for DynamicArray {}
+
+// impl RegisterForReflection for DynamicTuple {}
 
 #[cfg(feature = "auto_register")]
 pub mod auto_register {
-    pub use super::*;
+    use crate::registry::TypeRegistry;
 
     #[cfg(feature = "auto_register_inventory")]
     mod __auto_register_types_impl {

@@ -1,17 +1,152 @@
-use syn::Field;
+use quote::{ToTokens, quote};
+use syn::{Field, Ident};
+use proc_macro2::Span;
 use crate::derive_data::{FieldAttributes, ReflectMeta};
 
 
 pub(crate) struct ReflectStruct<'a> {
-    meta: ReflectMeta<'a>,
-    fields: Vec<StructField<'a>>,
+    pub meta: ReflectMeta<'a>,
+    pub fields: Vec<StructField<'a>>,
 }
 
-#[derive(Clone)]
+
 pub(crate) struct StructField<'a> {
     pub data: &'a Field,
     pub attrs: FieldAttributes,
     pub declaration_index: usize,
     /// This index accounts for the removal of [ignored] fields.
     pub reflection_index: Option<usize>,
+}
+
+impl StructField<'_> {
+    /// Generates a `TokenStream` for `NamedField` or `UnnamedField` construction.
+    /// 
+    /// This function is only allowed to be called for active fields(self.reflection_index is some).
+    pub fn to_info_tokens(&self, vct_reflect_path: &syn::Path) -> proc_macro2::TokenStream {
+        let field_info = if self.data.ident.is_some() {
+            crate::path::named_field_(vct_reflect_path)     // String Literal
+        } else {
+            crate::path::unnamed_field_(vct_reflect_path)   // Num Literal
+        };
+
+        let name = match &self.data.ident {
+            Some(ident) => ident.to_string().to_token_stream(), // String Literal
+            None => match self.reflection_index {
+                Some(index) => index.to_token_stream(),
+                None => panic!("`StructField::to_info_tokens` is only allowed to be called for active fields."),
+            }
+        };
+
+        let ty = &self.data.ty;
+
+        // See [`CustomAttributes::get_expression_with`]
+        let with_custom_attributes = self.attrs.custom_attributes.get_expression_with(vct_reflect_path);
+        // See [`ReflectDocs::get_expression_with`]
+        // If feature is diabled, this function will return a empty TokenStream, so it's safe.
+        let with_docs = self.attrs.docs.get_expression_with();
+
+        quote! {
+            #field_info::new::<#ty>(#name)
+                #with_custom_attributes
+                #with_docs
+        }
+    }
+
+    /// Returns a token stream for generating a `FieldId` for this field.
+    pub fn field_id(&self, vct_reflect_path: &syn::Path) -> proc_macro2::TokenStream {
+        let field_id_ = crate::path::field_id_(vct_reflect_path);
+        let alloc_utils_ = crate::path::alloc_utils_(vct_reflect_path);
+        match &self.data.ident {
+            Some(ident) => {
+                let name = ident.to_string();
+                quote!(#field_id_::Named(#alloc_utils_::Cow::Borrowed(#name)))
+            },
+            None => {
+                let index = self.declaration_index;
+                quote!(#field_id_::Unnamed(#index))
+            },
+        }
+    }
+
+    pub fn attrs(&self) -> &FieldAttributes {
+        &self.attrs
+    }
+
+    /// Generates a [`Member`] based on this field.
+    ///
+    /// If the field is unnamed, the declaration index is used.
+    /// This allows this member to be used for both active and ignored fields.
+    pub fn to_member(&self) -> syn::Member {
+        match &self.data.ident {
+            Some(ident) => syn::Member::Named(ident.clone()),
+            None => syn::Member::Unnamed(self.declaration_index.into()),
+        }
+    }
+
+}
+
+impl<'a> ReflectStruct<'a> {
+    /// Access the metadata associated with this struct definition.
+    pub fn meta(&self) -> &ReflectMeta<'a> {
+        &self.meta
+    }
+    
+    /// The complete set of fields in this struct.
+    pub fn fields(&self) -> &[StructField<'a>] {
+        &self.fields
+    }
+
+    /// Get an iterator of fields which are exposed to the reflection API.
+    pub fn active_fields(&self) -> impl Iterator<Item = &StructField<'a>> {
+        self.fields()
+            .iter()
+            .filter(|field| field.attrs.ignore.is_active())
+    }
+
+    // /// Get an iterator of fields which are ignored by the reflection API
+    // pub fn ignored_fields(&self) -> impl Iterator<Item = &StructField<'a>> {
+    //     self.fields()
+    //         .iter()
+    //         .filter(|field| field.attrs.ignore.is_ignored())
+    // }
+
+    pub fn to_info_tokens(&self, is_tuple: bool) -> proc_macro2::TokenStream {
+        let vct_reflect_path = self.meta.vct_reflect_path();
+
+        let type_info_path = crate::path::type_info_(vct_reflect_path);
+
+        let type_info_kind = if is_tuple {
+            Ident::new("TupleStruct", Span::call_site())
+        } else {
+            Ident::new("Struct", Span::call_site())
+        };
+
+        let info_struct_path = if is_tuple {
+            crate::path::tuple_struct_info_(vct_reflect_path)
+        } else {
+            crate::path::struct_info_(vct_reflect_path)
+        };
+
+        let field_infos = self
+            .active_fields()
+            .map(|field| field.to_info_tokens(vct_reflect_path));
+
+        // See [`CustomAttributes::get_expression_with`]
+        let with_custom_attributes = self.meta.with_custom_attributes_expression();
+        // See [`ReflectDocs::get_expression_with`]
+        // If feature is diabled, this function will return a empty TokenStream, so it's safe.
+        let with_docs = self.meta.with_docs_expression();
+        // See [`ReflectMeta::with_generics_expression`]
+        let with_generics = self.meta.with_generics_expression();
+
+        quote! {
+            #type_info_path::#type_info_kind(
+                #info_struct_path::new::<Self>(&[ #(#field_infos),* ])
+                    #with_generics
+                    #with_custom_attributes
+                    #with_docs
+            )
+        }
+    }
+
 }

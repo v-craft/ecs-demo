@@ -3,12 +3,10 @@ use syn::{Ident, Path, Generics, punctuated::Punctuated, GenericParam, spanned::
 use crate::utils::StringExpr;
 
 
-pub(crate) enum ReflectTypePath<'a> {
+pub(crate) enum TypePathParser<'a> {
     /// Types without a crate/module that can be named from any scope (e.g. `bool`).
     Primitive(&'a Ident),
-    /// The name of a type relative to its scope.
-    ///
-    /// The type must be able to be reached with just its name.
+    /// The type must be able to be reached with just its ident.
     /// 
     /// For local types, can use [`module_path!()`](module_path) to get the module path.
     Local {
@@ -16,9 +14,8 @@ pub(crate) enum ReflectTypePath<'a> {
         custom_path: Option<Path>,
         generics: &'a Generics,
     },
-    /// Using `::my_crate::foo::Bar` syntax.
-    ///
-    /// May have a separate custom path used for the `TypePath` implementation.
+    /// For foreign, [`module_path!()`](module_path) can not be used.
+    /// So the user needs to provide the complete path, using `::my_crate::foo::Bar` syntax.
     Foreign {
         path: &'a Path,
         custom_path: Option<Path>,
@@ -26,10 +23,11 @@ pub(crate) enum ReflectTypePath<'a> {
     },
 }
 
-impl<'a> ReflectTypePath<'a> {
+impl<'a> TypePathParser<'a> {
+    /// return `true` if self is `Local/Foreign` ans has custom path
     pub fn has_custom_path(&self) -> bool {
         match self {
-            Self::Local { custom_path, .. } | Self::Foreign { custom_path, .. } => {
+            Self::Local{ custom_path, .. } | Self::Foreign{ custom_path, .. } => {
                 custom_path.is_some()
             }
             _ => false,
@@ -53,6 +51,7 @@ impl<'a> ReflectTypePath<'a> {
 
     /// Whether an implementation of `Typed` or `TypePath` should be generic.
     pub fn impl_with_generic(&self) -> bool {
+        // Implementation based on generics requires no lifecycle parameters.
         !self
             .generics()
             .params
@@ -60,6 +59,29 @@ impl<'a> ReflectTypePath<'a> {
             .all(|param| matches!(param, GenericParam::Lifetime(_)))
     }
 
+    pub fn real_ident(&self) -> proc_macro2::TokenStream {
+        match self {
+            Self::Local { ident, .. } | Self::Primitive(ident) => ident.to_token_stream(),
+            Self::Foreign { path, .. } => path.to_token_stream(),
+        }
+    }
+
+    // /// Get the real type
+    // pub fn real_type(&self) -> proc_macro2::TokenStream {
+    //     match self {
+    //         Self::Primitive(ident) => quote!(#ident),
+    //         Self::Local{ ident, generics, .. } => {
+    //             let (_, ty_generics, _) = generics.split_for_impl();
+    //             quote!(#ident #ty_generics)
+    //         }
+    //         Self::Foreign{ path, generics, .. } => {
+    //             let (_, ty_generics, _) = generics.split_for_impl();
+    //             quote!(#path #ty_generics)
+    //         }
+    //     }
+    // }
+
+    /// Try to get (custom) ident
     pub fn get_ident(&self) -> Option<&Ident> {
         match self {
             Self::Primitive(ident) => Some(ident),
@@ -81,6 +103,7 @@ impl<'a> ReflectTypePath<'a> {
         }
     }
 
+    /// Try to get (custom) path
     pub fn get_path(&self) -> Option<&Path> {
         match self {
             Self::Local{ custom_path, .. } => custom_path.as_ref(),
@@ -91,32 +114,17 @@ impl<'a> ReflectTypePath<'a> {
         }
     }
 
-    pub fn true_type(&self) -> proc_macro2::TokenStream {
-        match self {
-            Self::Primitive(ident) => quote!(#ident),
-            Self::Local{ ident, generics, .. } => {
-                let (_, ty_generics, _) = generics.split_for_impl();
-                quote!(#ident #ty_generics)
-            }
-            Self::Foreign{ path, generics, .. } => {
-                let (_, ty_generics, _) = generics.split_for_impl();
-                quote!(#path #ty_generics)
-            }
-        }
-    }
-
     pub fn crate_name(&self) -> Option<StringExpr> {
         if let Some(path) = self.get_path() {
-            let crate_name = &path.segments.first().unwrap().ident;
+            let crate_name = &path.segments.first().unwrap_or_else(||{
+                panic!("If Path/CustomPath is exist, can not be empty.");
+            }).ident;
             return Some(StringExpr::from(crate_name));
         }
 
         match self {
             Self::Local { .. } => Some(StringExpr::Borrowed(quote! {
-                ::core::module_path!()
-                    .split(':')
-                    .next()
-                    .unwrap()
+                ::core::module_path!().split(':').next().unwrap()
             })),
             _ => None,
         }
@@ -126,11 +134,11 @@ impl<'a> ReflectTypePath<'a> {
         if let Some(path) = self.get_path() {
             let path_string = path
                 .segments
-                .pairs()
+                .iter()
                 .take(path.segments.len() - 1)
-                .map(|pair| pair.value().ident.to_string())
+                .map(|segment| segment.ident.to_string())
                 .reduce(|path, ident| path + "::" + &ident)
-                .unwrap();
+                .unwrap_or_else(||panic!("If Path/CustomPath is exist, can not be empty."));
 
             let path_lit = LitStr::new(&path_string, path.span());
             return Some(StringExpr::from_lit(&path_lit));
@@ -173,22 +181,28 @@ impl<'a> ReflectTypePath<'a> {
             GenericParam::Lifetime(_) => None,
         });
 
+        let first = params.next().into_iter();
+
         StringExpr::from_iter(
-            params.next().into_iter()
-                .chain(params.flat_map(|x| [StringExpr::from_str(", "), x])), 
+            first.chain(params.flat_map(|x| [StringExpr::from_str(", "), x])), 
             vct_reflect_path
         )
     }
 
+    /// Get type_name, see `TypePath::type_name`
+    /// For `core::option::Option<core::marker::PhantomData>`, this is `"Option<PhantomData>"`.
     pub fn type_name(&self, vct_reflect_path: &Path) -> StringExpr {
-        let type_path_ = crate::path::type_path_(vct_reflect_path);
         match self {
-            ReflectTypePath::Primitive(ident) => StringExpr::from(ident),
+            Self::Primitive(ident) => StringExpr::from(ident),
             Self::Local{ generics, .. } | Self::Foreign{ generics, .. } => {
-                let ident = self.type_ident().unwrap();
+                let ident = self.type_ident().unwrap_or_else(||{
+                    panic!("Non-Primitive type, try to parse type_name but get type_ident fail.");
+                });
 
                 if self.impl_with_generic() {
-                    let generics = ReflectTypePath::reduce_generics(
+                    let type_path_ = crate::path::type_path_(vct_reflect_path);
+
+                    let generics = TypePathParser::reduce_generics(
                         generics,
                         |TypeParam { ident, .. }| {
                             StringExpr::Borrowed(quote! {
@@ -213,18 +227,22 @@ impl<'a> ReflectTypePath<'a> {
 
     /// Returns a [`StringExpr`] representing the "type path" of the type.
     ///
-    /// For `Option<PhantomData>`, this is `"std::option::Option<std::marker::PhantomData>"`.
+    /// For `Option<PhantomData>`, this is `"core::option::Option<core::marker::PhantomData>"`.
     pub fn type_path(&self, vct_reflect_path: &Path) -> StringExpr {
-        let type_path = crate::path::type_path_(vct_reflect_path);
-
         match self {
             Self::Primitive(ident) => StringExpr::from(ident),
             Self::Local{ generics, .. } | Self::Foreign{ generics, .. } => {
-                let ident = self.type_ident().unwrap();
-                let module_path = self.module_path().unwrap();
+                let ident = self.type_ident().unwrap_or_else(||{
+                    panic!("Non-Primitive type, try to parse type_path but get type_ident fail.");
+                });
+                let module_path = self.module_path().unwrap_or_else(||{
+                    panic!("Non-Primitive type, try to parse type_path but get module_path fail.");
+                });
 
                 if self.impl_with_generic() {
-                    let generics = ReflectTypePath::reduce_generics(
+                    let type_path = crate::path::type_path_(vct_reflect_path);
+
+                    let generics = TypePathParser::reduce_generics(
                         generics,
                         |TypeParam { ident, .. }| {
                             StringExpr::Borrowed(quote! {
@@ -249,13 +267,12 @@ impl<'a> ReflectTypePath<'a> {
         }
     }
 
-}
+    pub fn type_path_into_owned(&self, vct_reflect_path: &Path) -> proc_macro2::TokenStream {
+        self.type_path(vct_reflect_path).into_owned(vct_reflect_path)
+    }
 
-impl ToTokens for ReflectTypePath<'_> {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        match self {
-            Self::Local { ident, .. } | Self::Primitive(ident) => ident.to_tokens(tokens),
-            Self::Foreign { path, .. } => path.to_tokens(tokens),
-        }
+    pub fn type_name_into_owned(&self, vct_reflect_path: &Path) -> proc_macro2::TokenStream {
+        self.type_name(vct_reflect_path).into_owned(vct_reflect_path)
     }
 }
+

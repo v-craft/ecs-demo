@@ -60,13 +60,6 @@ pub(crate) fn reflect_(vct_reflect_path: &syn::Path) -> TokenStream {
 }
 
 #[inline(always)]
-pub(crate) fn partial_reflect_(vct_reflect_path: &syn::Path) -> TokenStream {
-    quote! {
-        #vct_reflect_path::PartialReflect
-    }
-}
-
-#[inline(always)]
 pub(crate) fn from_reflect_(vct_reflect_path: &syn::Path) -> TokenStream {
     quote! {
         #vct_reflect_path::FromReflect

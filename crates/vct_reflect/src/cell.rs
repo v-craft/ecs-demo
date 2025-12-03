@@ -19,7 +19,8 @@
 //! }
 //! ```
 //! 
-//! Of course, if string literal can be used, there is no need to use this container.
+//! Normally, `NonGenericTypePathCell` should not be used 
+//! as it can be expressed as a string literal.
 //! 
 //! 
 //! # GenericTypeCell

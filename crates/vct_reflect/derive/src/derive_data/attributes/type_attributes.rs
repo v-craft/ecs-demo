@@ -28,7 +28,6 @@ mod kw {
     syn::custom_keyword!(Hash);
     syn::custom_keyword!(partial_eq);
     syn::custom_keyword!(PartialEq);
-    syn::custom_keyword!(default);
     syn::custom_keyword!(Default);
     syn::custom_keyword!(Internal);
     syn::custom_keyword!(type_path);
@@ -121,8 +120,6 @@ impl TypeAttributes {
             self.parse_reflect_hash(input)
         } else if lookahead.peek(kw::partial_eq) {
             self.parse_reflect_patrial_eq(input)
-        } else if lookahead.peek(kw::default){
-            self.parse_reflect_default(input)
         } else if lookahead.peek(kw::opaque) {
             self.parse_opaque(input)
         } else if lookahead.peek(kw::auto_register) {
@@ -320,16 +317,29 @@ impl TypeAttributes {
     }
 
     fn parse_reflect_clone(&mut self, input: ParseStream) -> syn::Result<()> {
-        // #[reflect(clone = Clone/Internal/func_path)]
+        // #[reflect(clone = func_path)]
+        let pair = input.parse::<MetaNameValue>()?;
+
+        if let Expr::Path(ExprPath{ path, .. }) = &pair.value {
+            self.method_flags.reflect_clone = MethodFlag::Custom(path.clone(), path.span());
+        } else {
+            return Err(syn::Error::new(pair.value.span(), "Epected a Path."));
+        }
+        
+        Ok(())
+    }
+
+    fn parse_reflect_debug(&mut self, input: ParseStream) -> syn::Result<()> {
+        // #[reflect(debug = Debug/Internal/func_path)]
         let pair = input.parse::<MetaNameValue>()?;
 
         if let Expr::Path(ExprPath{ path, .. }) = &pair.value {
             if path.is_ident("Internal") {
-                self.method_flags.reflect_clone = MethodFlag::Internal(path.span());
-            } else if path.is_ident("Clone") {
-                self.method_flags.reflect_clone = MethodFlag::Trait(path.span());
+                return Err(syn::Error::new(path.span(), "`Internal` is default for `reflect_debug` and should not be explicitly declared."));
+            } else if path.is_ident("Debug") {
+                self.method_flags.reflect_debug = MethodFlag::Trait(path.span());
             } else {
-                self.method_flags.reflect_clone = MethodFlag::Custom(path.clone(), path.span());
+                self.method_flags.reflect_debug = MethodFlag::Custom(path.clone(), path.span());
             }
         } else {
             return Err(syn::Error::new(pair.value.span(), "Epected a Path."));
@@ -344,30 +354,11 @@ impl TypeAttributes {
 
         if let Expr::Path(ExprPath{ path, .. }) = &pair.value {
             if path.is_ident("Internal") {
-                self.method_flags.reflect_hash = MethodFlag::Internal(path.span());
+                self.method_flags.reflect_hash = MethodFlag::Internal;
             } else if path.is_ident("Hash") {
                 self.method_flags.reflect_hash = MethodFlag::Trait(path.span());
             } else {
                 self.method_flags.reflect_hash = MethodFlag::Custom(path.clone(), path.span());
-            }
-        } else {
-            return Err(syn::Error::new(pair.value.span(), "Epected a Path."));
-        }
-        
-        Ok(())
-    }
-
-    fn parse_reflect_debug(&mut self, input: ParseStream) -> syn::Result<()> {
-        // #[reflect(debug = Debug/Internal/func_path)]
-        let pair = input.parse::<MetaNameValue>()?;
-
-        if let Expr::Path(ExprPath{ path, .. }) = &pair.value {
-            if path.is_ident("Internal") {
-                self.method_flags.reflect_debug = MethodFlag::Internal(path.span());
-            } else if path.is_ident("Debug") {
-                self.method_flags.reflect_debug = MethodFlag::Trait(path.span());
-            } else {
-                self.method_flags.reflect_debug = MethodFlag::Custom(path.clone(), path.span());
             }
         } else {
             return Err(syn::Error::new(pair.value.span(), "Epected a Path."));
@@ -382,30 +373,11 @@ impl TypeAttributes {
 
         if let Expr::Path(ExprPath{ path, .. }) = &pair.value {
             if path.is_ident("Internal") {
-                self.method_flags.reflect_partial_eq = MethodFlag::Internal(path.span());
+                self.method_flags.reflect_partial_eq = MethodFlag::Internal;
             } else if path.is_ident("PartialEq") {
                 self.method_flags.reflect_partial_eq = MethodFlag::Trait(path.span());
             } else {
                 self.method_flags.reflect_partial_eq = MethodFlag::Custom(path.clone(), path.span());
-            }
-        } else {
-            return Err(syn::Error::new(pair.value.span(), "Epected a Path."));
-        }
-        
-        Ok(())
-    }
-
-    fn parse_reflect_default(&mut self, input: ParseStream) -> syn::Result<()> {
-        // #[reflect(default = Default/Internal/func_path)]
-        let pair = input.parse::<MetaNameValue>()?;
-
-        if let Expr::Path(ExprPath{ path, .. }) = &pair.value {
-            if path.is_ident("Internal") {
-                self.method_flags.reflect_default = MethodFlag::Internal(path.span());
-            } else if path.is_ident("Default") {
-                self.method_flags.reflect_default = MethodFlag::Trait(path.span());
-            } else {
-                self.method_flags.reflect_default = MethodFlag::Custom(path.clone(), path.span());
             }
         } else {
             return Err(syn::Error::new(pair.value.span(), "Epected a Path."));

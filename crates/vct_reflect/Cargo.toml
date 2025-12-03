@@ -29,6 +29,7 @@ auto_register_inventory = [
 
 [dependencies]
 vct_reflect_derive = { path = "derive" }
+vct_ptr = { path = "../vct_ptr" }
 vct_cfg = { path = "../vct_cfg", default-features = false }
 vct_utils = { path = "../vct_utils", default-features = false }
 vct_os = { path = "../vct_os", default-features = false }

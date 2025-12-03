@@ -4,44 +4,10 @@ use vct_utils::collections::TypeIdMap;
 
 use crate::Reflect;
 
-/// Single custom attribute
-struct CustomAttribute {
-    value: Box<dyn Reflect>,
-}
-
-impl CustomAttribute {
-    /// create new container
-    #[inline]
-    pub fn new<T: Reflect>(value: T) -> Self {
-        Self {
-            value: Box::new(value),
-        }
-    }
-
-    /// Retrieve reference to internal value with type `T`
-    #[inline]
-    pub fn value<T: Reflect>(&self) -> Option<&T> {
-        self.value.downcast_ref()
-    }
-
-    /// Retrieve reference to internal value
-    #[inline]
-    pub fn reflect_value(&self) -> &dyn Reflect {
-        &*self.value
-    }
-}
-
-impl fmt::Debug for CustomAttribute {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.value.reflect_debug(f)
-    }
-}
-
 /// Container for recording custom attributes
 #[derive(Default)]
 pub struct CustomAttributes {
-    attributes: TypeIdMap<CustomAttribute>,
+    attributes: TypeIdMap<Box<dyn Reflect>>,
 }
 
 impl CustomAttributes {
@@ -53,8 +19,7 @@ impl CustomAttributes {
     /// Add attributes
     #[inline]
     pub fn with_attribute<T: Reflect>(mut self, value: T) -> Self {
-        self.attributes
-            .insert(TypeId::of::<T>(), CustomAttribute::new(value));
+        self.attributes.insert(TypeId::of::<T>(), Box::new(value));
         self
     }
 
@@ -63,7 +28,7 @@ impl CustomAttributes {
     pub fn iter(&self) -> impl ExactSizeIterator<Item = (&TypeId, &dyn Reflect)> {
         self.attributes
             .iter()
-            .map(|(key, val)| (key, val.reflect_value()))
+            .map(|(key, val)| (key, &**val))
     }
 
     /// Check if it contains a certain attribute
@@ -81,13 +46,13 @@ impl CustomAttributes {
     /// Get specified attributes
     #[inline]
     pub fn get<T: Reflect>(&self) -> Option<&T> {
-        self.attributes.get(&TypeId::of::<T>())?.value::<T>()
+        self.attributes.get(&TypeId::of::<T>())?.downcast_ref::<T>()
     }
 
     /// Get specified attributes
     #[inline]
     pub fn get_by_id(&self, id: TypeId) -> Option<&dyn Reflect> {
-        Some(self.attributes.get(&id)?.reflect_value())
+        Some(self.attributes.get(&id)?.as_ref())
     }
 
     /// Get the number of internal attributes
@@ -122,7 +87,7 @@ macro_rules! impl_custom_attributes_fn {
         pub fn custom_attributes($self: &Self) -> Option<&$crate::info::CustomAttributes> {
             match $expr {
                 Some(arc) => Some(&**arc),
-                None => todo!(),
+                None => None,
             }
         }
 

@@ -4,6 +4,9 @@
 mod from_reflect;
 pub use from_reflect::TypeTraitFromReflect;
 
+mod from_ptr;
+pub use from_ptr::TypeTraitFromPtr;
+
 mod default;
 pub use default::TypeTraitDefault;
 

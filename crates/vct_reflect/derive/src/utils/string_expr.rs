@@ -21,6 +21,18 @@ pub(crate) enum StringExpr {
     Owned(TokenStream),
 }
 
+impl Default for StringExpr {
+    fn default() -> Self {
+        Self::Const("".to_token_stream())
+    }
+}
+
+impl<T: ToString + Spanned> From<T> for StringExpr {
+    fn from(value: T) -> Self {
+        Self::Const(LitStr::new(&value.to_string(), value.span()).to_token_stream())
+    }
+}
+
 impl StringExpr {
     /// Creates a [constant] [`StringExpr`] from a [`struct@LitStr`].
     ///
@@ -34,7 +46,7 @@ impl StringExpr {
     /// [constant]: StringExpr::Const
     pub fn from_str(string: &str) -> Self {
         // ↓ Generate tokens with string literal.
-        Self::Const(string.into_token_stream())
+        Self::Const(string.to_token_stream())
     }
 
     /// Returns tokens for a statically borrowed [string slice](str).
@@ -42,85 +54,95 @@ impl StringExpr {
         match self {
             Self::Const(tokens) | Self::Borrowed(tokens) => tokens,
             Self::Owned(owned) => quote! {
-                &#owned
+                &#owned as &str
             },
         }
     }
 
     /// Returns tokens for an [owned string](String).
     pub fn into_owned(self, vct_reflect_path: &syn::Path) -> TokenStream {
-        let alloc_utils_path = crate::path::alloc_utils_(&vct_reflect_path);
-
         match self {
-            Self::Const(tokens) | Self::Borrowed(tokens) => quote! {
-                #alloc_utils_path::ToString::to_string(#tokens)
+            Self::Const(tokens) | Self::Borrowed(tokens) => {
+                let alloc_utils_path = crate::path::alloc_utils_(vct_reflect_path);
+                quote! {
+                    #alloc_utils_path::ToString::to_string(#tokens)
+                }
             },
             Self::Owned(owned) => owned,
         }
     }
 
-
-    /// Concat two string expr.
-    ///
-    /// If both expressions are [`StringExpr::Const`] this will use [`concat`] to merge them.
-    pub fn concat(self, other: StringExpr, vct_reflect_path: &syn::Path) -> Self {
-        if let Self::Const(tokens) = &self {
-            if let Self::Const(more) = other {
-                return Self::Const(quote! {
-                    ::core::concat!(#tokens, #more)
-                });
-            }
+    /// Get inner TokenStream if self is const string expr.
+    /// 
+    /// # Panic
+    /// - self is not const string expr.
+    pub fn into_const(self) -> TokenStream {
+        match self {
+            StringExpr::Const(token_stream) => token_stream,
+            _ => unreachable!(),
         }
-
-        let owned = self.into_owned(vct_reflect_path);
-        let borrowed = other.into_borrowed();
-        Self::Owned(quote! {
-            ::core::ops::Add::<&str>::add(#owned, #borrowed)
-        })
     }
 
+    /// Check if self is const expression 
+    pub fn is_const(&self) -> bool  {
+        match self {
+            StringExpr::Const(_) => true,
+            _ => false,
+        }
+    }
 
+    // /// Concat two string expr.
+    // ///
+    // /// If both expressions are [`StringExpr::Const`] this will use [`concat`] to merge them.
+    // pub fn append(self, other: StringExpr, vct_reflect_path: &syn::Path) -> Self {
+    //     if self.is_const() && other.is_const() {
+    //         let x = self.into_const();
+    //         let y = other.into_const();
+    //         Self::Const(quote! {
+    //             ::core::concat!( #x , #y )
+    //         })
+    //     } else {
+    //         let alloc_utils_path = crate::path::alloc_utils_(vct_reflect_path);
+    //         let x = self.into_borrowed();
+    //         let y = other.into_borrowed();
+    //         Self::Owned(quote! {
+    //             #alloc_utils_path::concat(&[ #x , #y ])
+    //         })
+    //     }
+    // }
+
+    /// concat string from iterator
+    /// 
+    /// If all expressions are [`StringExpr::Const`] this will use [`concat`] to merge them.
     pub fn from_iter<T: IntoIterator<Item = StringExpr>>(iter: T, vct_reflect_path: &syn::Path) -> Self {
-        let mut iter = iter.into_iter();
-        match iter.next() {
-            Some(mut expr) => {
-                for next in iter {
-                    expr = expr.concat(next, vct_reflect_path);
-                }
-                expr
-            }
-            None => Default::default(),
+        let exprs: Vec<StringExpr> = iter.into_iter().collect();
+
+        if exprs.is_empty() {
+            return Self::default();
+        }
+
+        if exprs.iter().all(|expr|expr.is_const()) {
+            let inner = exprs
+                .into_iter()
+                .map(|expr|expr.into_const()); // `exprs` will not be empty here.
+
+            Self::Const(quote! {
+                ::core::concat!( #(#inner),* )
+            })
+        } else {
+            let alloc_utils_path = crate::path::alloc_utils_(vct_reflect_path);
+            let inner = exprs
+                .into_iter()
+                .map(|expr|expr.into_borrowed());
+
+            Self::Owned(quote! {
+                #alloc_utils_path::concat(&[ #(#inner),* ])
+            })
         }
     }
 
 }
 
-impl<T: ToString + Spanned> From<T> for StringExpr {
-    fn from(value: T) -> Self {
-        Self::from_lit(&LitStr::new(&value.to_string(), value.span()))
-    }
-}
 
-impl Default for StringExpr {
-    fn default() -> Self {
-        StringExpr::from_str("")
-    }
-}
-
-// impl FromIterator<StringExpr> for StringExpr {
-//     fn from_iter<T: IntoIterator<Item = StringExpr>>(iter: T) -> Self {
-//         let mut iter = iter.into_iter();
-//         match iter.next() {
-//             Some(mut expr) => {
-//                 let vct_reflect_path = crate::path::vct_reflect();
-//                 for next in iter {
-//                     expr = expr.concat(next, &vct_reflect_path);
-//                 }
-//                 expr
-//             }
-//             None => Default::default(),
-//         }
-//     }
-// }
 
 

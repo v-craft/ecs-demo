@@ -42,3 +42,45 @@ pub(crate) fn type_registry_arc_(vct_reflect_path: &syn::Path) -> TokenStream {
         #vct_reflect_path::registry::TypeRegistryArc
     }
 }
+
+#[inline]
+pub(crate) fn type_trait_default_(vct_reflect_path: &syn::Path) -> TokenStream {
+    quote! {
+        #vct_reflect_path::registry::TypeTraitDefault
+    }
+}
+
+#[inline]
+pub(crate) fn type_trait_from_ptr_(vct_reflect_path: &syn::Path) -> TokenStream {
+    quote! {
+        #vct_reflect_path::registry::TypeTraitFromPtr
+    }
+}
+
+#[inline]
+pub(crate) fn type_trait_from_reflect_(vct_reflect_path: &syn::Path) -> TokenStream {
+    quote! {
+        #vct_reflect_path::registry::TypeTraitFromReflect
+    }
+}
+
+#[inline]
+pub(crate) fn type_trait_serialize_(vct_reflect_path: &syn::Path) -> TokenStream {
+    quote! {
+        #vct_reflect_path::registry::TypeTraitSerialize
+    }
+}
+
+#[inline]
+pub(crate) fn type_trait_deserialize_(vct_reflect_path: &syn::Path) -> TokenStream {
+    quote! {
+        #vct_reflect_path::registry::TypeTraitDeserialize
+    }
+}
+
+#[inline]
+pub(crate) fn type_trait_serialize_from_(vct_reflect_path: &syn::Path) -> TokenStream {
+    quote! {
+        #vct_reflect_path::registry::TypeTraitSerializeFrom
+    }
+}
