@@ -9,14 +9,13 @@ use alloc::{boxed::Box, format, vec::Vec};
 use core::fmt;
 use vct_utils::collections::{HashTable, hash_table};
 
-/// Representing [`Set`]`, used to dynamically modify the type of data and information.
+/// Represents a [`Set`], used to dynamically modify data and its reflected type information.
 ///
-/// Dynamic types are special in that their TypeInfo is [`OpaqueInfo`],
-/// but other APIs are consistent with the type they represent, such as [`reflect_kind`], [`reflect_ref`]
+/// Dynamic types are special in that their `TypeInfo` is [`OpaqueInfo`],
+/// but other APIs behave like the represented type, such as [`reflect_kind`] and [`reflect_ref`].
 ///
 /// [`reflect_kind`]: crate::Reflect::reflect_kind
 /// [`reflect_ref`]: crate::Reflect::reflect_ref
-#[derive(Default)]
 pub struct DynamicSet {
     set_info: Option<&'static TypeInfo>,
     hash_table: HashTable<Box<dyn Reflect>>,
@@ -34,8 +33,8 @@ impl TypePath for DynamicSet {
     }
 
     #[inline]
-    fn type_ident() -> Option<&'static str> {
-        Some("DynamicSet")
+    fn type_ident() -> &'static str {
+        "DynamicSet"
     }
 
     #[inline]
@@ -57,11 +56,21 @@ impl Typed for DynamicSet {
 }
 
 impl DynamicSet {
+    /// Create a empty [`DynamicSet`].
     #[inline]
     pub const fn new() -> Self {
         Self {
             set_info: None,
             hash_table: HashTable::new(),
+        }
+    }
+
+    /// See [`Vec::with_capacity`]
+    #[inline]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            set_info: None,
+            hash_table: HashTable::with_capacity(capacity),
         }
     }
 
@@ -260,7 +269,7 @@ pub trait Set: Reflect {
 
     /// Creates a new [`DynamicSet`] from this set.
     fn to_dynamic_set(&self) -> DynamicSet {
-        let mut set = DynamicSet::default();
+        let mut set = DynamicSet::new();
         set.set_type_info(self.represented_type_info());
         for value in self.iter() {
             set.insert_boxed(value.to_dynamic());

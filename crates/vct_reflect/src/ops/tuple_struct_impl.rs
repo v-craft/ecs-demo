@@ -18,14 +18,13 @@ impl From<DynamicTuple> for DynamicTupleStruct {
     }
 }
 
-/// Representing [`TupleStruct`]`, used to dynamically modify the type of data and information.
+/// Represents a [`TupleStruct`], used to dynamically modify data and its reflected type information.
 ///
-/// Dynamic types are special in that their TypeInfo is [`OpaqueInfo`],
-/// but other APIs are consistent with the type they represent, such as [`reflect_kind`], [`reflect_ref`]
+/// Dynamic types are special in that their `TypeInfo` is [`OpaqueInfo`],
+/// but other APIs behave like the represented type, such as [`reflect_kind`] and [`reflect_ref`].
 ///
 /// [`reflect_kind`]: crate::Reflect::reflect_kind
 /// [`reflect_ref`]: crate::Reflect::reflect_ref
-#[derive(Default)]
 pub struct DynamicTupleStruct {
     tuple_struct_info: Option<&'static TypeInfo>,
     fields: Vec<Box<dyn Reflect>>,
@@ -43,8 +42,8 @@ impl TypePath for DynamicTupleStruct {
     }
 
     #[inline]
-    fn type_ident() -> Option<&'static str> {
-        Some("DynamicTupleStruct")
+    fn type_ident() -> &'static str {
+        "DynamicTupleStruct"
     }
 
     #[inline]
@@ -66,6 +65,7 @@ impl Typed for DynamicTupleStruct {
 }
 
 impl DynamicTupleStruct {
+    /// Create a empty [`DynamicTupleStruct`].
     #[inline]
     pub const fn new() -> Self {
         Self {
@@ -73,6 +73,16 @@ impl DynamicTupleStruct {
             fields: Vec::new(),
         }
     }
+
+    /// See [`Vec::with_capacity`]
+    #[inline]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            tuple_struct_info: None,
+            fields: Vec::with_capacity(capacity),
+        }
+    }
+
 
     /// Sets the [`TypeInfo`] to be represented by this `DynamicTupleStruct`.
     #[inline]

@@ -13,10 +13,10 @@ use crate::{
     reflect_hasher,
 };
 
-/// Representing [`Array`]`, used to dynamically modify the type of data and information.
+/// Represents an [`Array`], used to dynamically modify data and its reflected type information.
 ///
-/// Dynamic types are special in that their TypeInfo is [`OpaqueInfo`],
-/// but other APIs are consistent with the type they represent, such as [`reflect_kind`], [`reflect_ref`]
+/// Dynamic types are special in that their `TypeInfo` is [`OpaqueInfo`],
+/// but other APIs behave like the represented type, such as [`reflect_kind`] and [`reflect_ref`].
 ///
 /// [`reflect_kind`]: crate::Reflect::reflect_kind
 /// [`reflect_ref`]: crate::Reflect::reflect_ref
@@ -35,8 +35,8 @@ impl TypePath for DynamicArray {
         "DynamicArray"
     }
     #[inline]
-    fn type_ident() -> Option<&'static str> {
-        Some("DynamicArray")
+    fn type_ident() -> &'static str {
+        "DynamicArray"
     }
     #[inline]
     fn crate_name() -> Option<&'static str> {
@@ -73,12 +73,12 @@ impl DynamicArray {
     #[inline]
     pub fn set_type_info(&mut self, array_info: Option<&'static TypeInfo>) {
         match array_info {
-            Some(TypeInfo::Array(_)) | None => {}
+            Some(TypeInfo::Array(_)) | None => {},
             _ => {
                 panic!(
                     "Call `DynamicArray::set_type_info`, but the input is not array information or None."
-                )
-            }
+                );
+            },
         }
 
         self.array_info = array_info;

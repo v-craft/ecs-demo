@@ -134,13 +134,4 @@ impl ReflectDocs {
 
 }
 
-// impl ToTokens for ReflectDocs {
-//     fn to_tokens(&self, _tokens: &mut TokenStream) {
-//         if let Some(doc) = self.doc_string() {
-//             quote!(#OptionFP::Some(#doc)).to_tokens(_tokens);
-//         } else {
-//             quote!(#OptionFP::None).to_tokens(_tokens);
-//         }
-//     }
-// }
 

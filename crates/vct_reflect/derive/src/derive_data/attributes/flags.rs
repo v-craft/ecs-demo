@@ -1,9 +1,7 @@
-use proc_macro2::Span;
-use syn::Path;
 
 /// A struct used to control whether a trait needs to be implemented.
 #[derive(Clone)]
-pub(crate) struct TraitImplFlags {
+pub(crate) struct TraitImplSwitches {
     /// Default is `true`, use `#[reflect(TypePath = false)]`  to disable it.
     /// Then Users can(must) impl it in a more customized way.
     pub(crate) impl_type_path: bool,
@@ -33,7 +31,7 @@ pub(crate) struct TraitImplFlags {
     pub(crate) impl_enum: bool,
 }
 
-impl Default for TraitImplFlags {
+impl Default for TraitImplSwitches {
     fn default() -> Self {
         Self {
             impl_type_path: true, 
@@ -50,31 +48,14 @@ impl Default for TraitImplFlags {
 }
 
 #[derive(Clone, Default)]
-pub(crate) enum MethodFlag {
-    /// By default, no implementation is provided. (except for `reflect_debug`)
-    #[default]
-    Default,
-    /// This option will be implemented through a subfield (and its own type name). 
-    /// When there are sub fields that are not supported, this type is also not supported.  
-    /// For `reflect_debug`, this is eq to `Default`.  
-    /// For example: `#[reflect(clone = Internal)]`.
-    Internal,
-    /// This option will implement the function through the same name Trait(the type must implemented this trait), 
-    /// This is usually more efficient than `Internal`.  
-    /// For example: `#[reflect(clone = Clone)]`.
-    Trait(Span),
-    /// This option allows users to implement it using the specified function,
-    /// but it is important to ensure the correctness of the function parameters.  
-    /// For example: `#[reflect(clone = utils::my_clone_fun)]`
-    Custom(Path, Span),
-}
-
-#[derive(Clone, Default)]
-pub(crate) struct MethodImplFlags {
-    pub reflect_clone: MethodFlag,
-    pub reflect_debug: MethodFlag,
-    pub reflect_hash: MethodFlag,
-    pub reflect_partial_eq: MethodFlag,
+pub(crate) struct TraitAvailableFlags {
+    pub default: bool,
+    pub clone: bool,
+    pub debug: bool,
+    pub hash: bool,
+    pub partial_eq: bool,
+    pub serialize: bool,
+    pub deserialize: bool,
 }
 
 

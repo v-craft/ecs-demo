@@ -77,10 +77,3 @@ pub(crate) fn type_trait_deserialize_(vct_reflect_path: &syn::Path) -> TokenStre
         #vct_reflect_path::registry::TypeTraitDeserialize
     }
 }
-
-#[inline]
-pub(crate) fn type_trait_serialize_from_(vct_reflect_path: &syn::Path) -> TokenStream {
-    quote! {
-        #vct_reflect_path::registry::TypeTraitSerializeFrom
-    }
-}

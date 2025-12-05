@@ -12,13 +12,15 @@ use crate::{
     ops::List,
 };
 
-/// Container for storing compile-time list-like information
+/// Container for storing compile-time list-like information.
 #[derive(Clone, Debug)]
 pub struct ListInfo {
     ty: Type,
     generics: Generics,
     item_ty: Type,
+    // `TypeInfo` is created on the first visit, use function pointers to delay it.
     item_info: fn() -> &'static TypeInfo,
+    // Use `Option` to reduce unnecessary heap requests (when empty content).
     custom_attributes: Option<Arc<CustomAttributes>>,
     #[cfg(feature = "reflect_docs")]
     docs: Option<&'static str>,
@@ -31,8 +33,7 @@ impl ListInfo {
     impl_custom_attributes_fn!(custom_attributes);
     impl_with_custom_attributes!(custom_attributes);
 
-    /// Create a new container
-    #[inline]
+    /// Creates a new [`ListInfo`].
     pub fn new<TList: List + TypePath, TItem: Reflect + Typed>() -> Self {
         Self {
             ty: Type::of::<TList>(),
@@ -45,13 +46,13 @@ impl ListInfo {
         }
     }
 
-    /// Get the [`TypeInfo`] of list items
+    /// Returns the [`TypeInfo`] of list items.
     #[inline]
     pub fn item_info(&self) -> &'static TypeInfo {
         (self.item_info)()
     }
 
-    /// Get the [`Type`] of list items
+    /// Returns the [`Type`] of list items.
     #[inline]
     pub fn item_ty(&self) -> Type {
         self.item_ty

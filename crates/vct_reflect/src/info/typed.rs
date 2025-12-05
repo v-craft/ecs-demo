@@ -5,7 +5,7 @@ pub trait Typed: TypePath {
     fn type_info() -> &'static TypeInfo;
 }
 
-/// Dynamic dispatch for [`Typed`].
+/// Provides dynamic dispatch for types that implement [`Typed`].
 pub trait DynamicTyped {
     /// See [`Typed::type_info`].
     fn reflect_type_info(&self) -> &'static TypeInfo;

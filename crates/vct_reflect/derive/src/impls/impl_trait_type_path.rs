@@ -2,28 +2,23 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use crate::{
     path::fp::OptionFP,
-    derive_data::{ReflectMeta, TypePathParser}, utils::{StringExpr , wrap_in_option}
+    derive_data::ReflectMeta, utils::{StringExpr , wrap_in_option}
 };
 
-fn static_path_cell(meta: &ReflectMeta, generator: TokenStream) -> TokenStream {
-    let vct_reflect_path = meta.vct_reflect_path();
-    if meta.type_path_parser().impl_with_generic() {
-        let cell_path = crate::path::generic_type_path_cell_(vct_reflect_path);
+fn static_path_cell(vct_reflect_path: &syn::Path, generator: TokenStream) -> TokenStream {
+    let cell_path = crate::path::generic_type_path_cell_(vct_reflect_path);
 
-        quote! {
-            static CELL: #cell_path = #cell_path::new()
-            CELL.get_or_insert::<Self, _>(|| {
-                #generator
-            })
-        }
-    } else {
-        unreachable!(
-            "Cannot use non-generic type path cell. Use string literals and core::concat instead."
-        );
+    quote! {
+        static CELL: #cell_path = #cell_path::new()
+        CELL.get_or_insert::<Self, _>(|| {
+            #generator
+        })
     }
 }
 
 pub(crate) fn impl_trait_type_path(meta: &ReflectMeta) -> TokenStream {
+    debug_assert!(meta.attrs().impl_switchs.impl_type_path);
+
     let vct_reflect_path = meta.vct_reflect_path();
     let trait_type_path_ = crate::path::type_path_(vct_reflect_path);
 
@@ -31,15 +26,15 @@ pub(crate) fn impl_trait_type_path(meta: &ReflectMeta) -> TokenStream {
     let real_ident = parser.real_ident();
 
     let inline_flag = if parser.impl_with_generic() {
-        quote! { #[inline] }
-    } else {
         crate::utils::empty()
+    } else {
+        quote! { #[inline] }
     };
 
     let (type_path, type_name) = if parser.impl_with_generic() {
         (
-            static_path_cell(meta, parser.type_path_into_owned(vct_reflect_path)),
-            static_path_cell(meta, parser.type_name_into_owned(vct_reflect_path)),
+            static_path_cell(vct_reflect_path, parser.type_path_into_owned(vct_reflect_path)),
+            static_path_cell(vct_reflect_path, parser.type_name_into_owned(vct_reflect_path)),
         )
     } else {
         (
@@ -49,7 +44,7 @@ pub(crate) fn impl_trait_type_path(meta: &ReflectMeta) -> TokenStream {
     };
 
     // Only Primitive type can return None
-    let type_ident = wrap_in_option(parser.type_ident().map(StringExpr::into_borrowed));
+    let type_ident = parser.type_ident().into_borrowed();
     let module_path = wrap_in_option(parser.module_path().map(StringExpr::into_borrowed));
     let crate_name = wrap_in_option(parser.crate_name().map(StringExpr::into_borrowed));
 
@@ -67,17 +62,17 @@ pub(crate) fn impl_trait_type_path(meta: &ReflectMeta) -> TokenStream {
                 #type_name
             }
 
-            #inline_flag
-            fn type_ident() -> #OptionFP<&'static str> {
+            #[inline]
+            fn type_ident() -> &'static str {
                 #type_ident
             }
 
-            #inline_flag
+            #[inline]
             fn crate_name() -> #OptionFP<&'static str> {
                 #crate_name
             }
 
-            #inline_flag
+            #[inline]
             fn module_path() -> #OptionFP<&'static str> {
                 #module_path
             }

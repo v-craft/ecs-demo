@@ -68,10 +68,6 @@ impl StructField<'_> {
         }
     }
 
-    pub fn attrs(&self) -> &FieldAttributes {
-        &self.attrs
-    }
-
     /// Generates a [`Member`] based on this field.
     ///
     /// If the field is unnamed, the declaration index is used.
@@ -103,12 +99,16 @@ impl<'a> ReflectStruct<'a> {
             .filter(|field| !field.attrs.ignore)
     }
 
-    // /// Get an iterator of fields which are ignored by the reflection API
-    // pub fn ignored_fields(&self) -> impl Iterator<Item = &StructField<'a>> {
-    //     self.fields()
-    //         .iter()
-    //         .filter(|field| field.attrs.ignore.is_ignored())
-    // }
+    pub fn access_for_field(
+        &self,
+        field: &StructField<'a>,
+        is_mutable: bool,
+    ) -> proc_macro2::TokenStream {
+        let member = field.to_member();
+        let prefix_tokens = if is_mutable { quote!(&mut) } else { quote!(&) };
+
+        quote!(#prefix_tokens self.#member)
+    }
 
     pub fn to_info_tokens(&self, is_tuple: bool) -> proc_macro2::TokenStream {
         let vct_reflect_path = self.meta.vct_reflect_path();
@@ -150,3 +150,40 @@ impl<'a> ReflectStruct<'a> {
     }
 
 }
+
+/// A helper struct for creating field accessors.
+pub(crate) struct FieldAccessors {
+    /// The referenced field accessors, such as `&self.foo`.
+    pub fields_ref: Vec<proc_macro2::TokenStream>,
+    /// The mutably referenced field accessors, such as `&mut self.foo`.
+    pub fields_mut: Vec<proc_macro2::TokenStream>,
+    /// The ordered set of field indices (basically just the range of [0, `field_count`).
+    pub field_indices: Vec<usize>,
+    /// The number of fields in the reflected struct.
+    pub field_count: usize,
+}
+
+impl FieldAccessors {
+    pub fn new(reflect_struct: &ReflectStruct) -> Self {
+        let (fields_ref, fields_mut): (Vec<_>, Vec<_>) = reflect_struct
+            .active_fields()
+            .map(|field| {
+                (
+                    reflect_struct.access_for_field(field, false),
+                    reflect_struct.access_for_field(field, true),
+                )
+            })
+            .unzip();
+
+        let field_count = fields_ref.len();
+        let field_indices = (0..field_count).collect();
+
+        Self {
+            fields_ref,
+            fields_mut,
+            field_indices,
+            field_count,
+        }
+    }
+}
+

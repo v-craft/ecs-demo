@@ -91,26 +91,6 @@ impl StringExpr {
         }
     }
 
-    // /// Concat two string expr.
-    // ///
-    // /// If both expressions are [`StringExpr::Const`] this will use [`concat`] to merge them.
-    // pub fn append(self, other: StringExpr, vct_reflect_path: &syn::Path) -> Self {
-    //     if self.is_const() && other.is_const() {
-    //         let x = self.into_const();
-    //         let y = other.into_const();
-    //         Self::Const(quote! {
-    //             ::core::concat!( #x , #y )
-    //         })
-    //     } else {
-    //         let alloc_utils_path = crate::path::alloc_utils_(vct_reflect_path);
-    //         let x = self.into_borrowed();
-    //         let y = other.into_borrowed();
-    //         Self::Owned(quote! {
-    //             #alloc_utils_path::concat(&[ #x , #y ])
-    //         })
-    //     }
-    // }
-
     /// concat string from iterator
     /// 
     /// If all expressions are [`StringExpr::Const`] this will use [`concat`] to merge them.

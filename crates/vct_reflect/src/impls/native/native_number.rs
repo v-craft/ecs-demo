@@ -20,6 +20,10 @@ macro_rules! impl_native_number {
             fn type_name() -> &'static str {
                 $str_name
             }
+            #[inline]
+            fn type_ident() -> &'static str {
+                $str_name
+            }
         }
 
         impl Typed for $name {

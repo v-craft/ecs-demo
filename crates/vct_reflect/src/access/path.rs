@@ -3,7 +3,7 @@ use core::fmt;
 
 use crate::access::OffsetAccessor;
 
-/// A Interface for representing path parsing error information
+/// An interface for representing path parsing error information.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseError<'a> {
     /// Position in `path`.
@@ -33,7 +33,8 @@ impl core::error::Error for ParseError<'_> {}
 ///
 /// [`&str`]: str
 pub trait AccessPath<'a> {
-    /// Parse the path and return the iterator of [`OffsetAccessor`]
-    fn parse_to_accessor(&self)
-    -> impl Iterator<Item = Result<OffsetAccessor<'a>, ParseError<'a>>>;
+    /// Parses the path and returns an iterator of [`OffsetAccessor`].
+    fn parse_to_accessor(
+        &self,
+    ) -> impl Iterator<Item = Result<OffsetAccessor<'a>, ParseError<'a>>>;
 }

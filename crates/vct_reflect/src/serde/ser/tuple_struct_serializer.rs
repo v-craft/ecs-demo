@@ -43,8 +43,7 @@ impl<P: SerializerProcessor> Serialize for TupleStructSerializer<'_, P> {
         let mut state = serializer.serialize_tuple_struct(
             tuple_struct_info
                 .type_path_table()
-                .ident()
-                .unwrap_or(crate::serde::NO_IDENT),
+                .ident(),
             field_len,
         )?;
 

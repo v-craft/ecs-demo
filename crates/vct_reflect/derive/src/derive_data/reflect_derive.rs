@@ -17,15 +17,15 @@ pub(crate) enum ReflectDerive<'a> {
 
 
 impl<'a> ReflectDerive<'a> {
-    // pub fn meta(&self) -> &ReflectMeta<'a> {
-    //     match self {
-    //         ReflectDerive::Struct(reflect_struct) => reflect_struct.meta(),
-    //         ReflectDerive::TupleStruct(reflect_struct) => reflect_struct.meta(),
-    //         ReflectDerive::UnitStruct(reflect_meta) => reflect_meta,
-    //         ReflectDerive::Enum(reflect_enum) => reflect_enum.meta(),
-    //         ReflectDerive::Opaque(reflect_meta) => reflect_meta,
-    //     }
-    // }
+    pub fn meta(&self) -> &ReflectMeta<'a> {
+        match self {
+            ReflectDerive::Struct(reflect_struct) => reflect_struct.meta(),
+            ReflectDerive::TupleStruct(reflect_struct) => reflect_struct.meta(),
+            ReflectDerive::UnitStruct(reflect_meta) => reflect_meta,
+            ReflectDerive::Enum(reflect_enum) => reflect_enum.meta(),
+            ReflectDerive::Opaque(reflect_meta) => reflect_meta,
+        }
+    }
 
     pub fn from_input(input: &'a DeriveInput, source: ImplSourceKind) -> syn::Result<Self> {
         let type_attributes = TypeAttributes::parse_attrs(&input.attrs)?;
@@ -34,7 +34,7 @@ impl<'a> ReflectDerive<'a> {
         // but for foreign types, the user needs to explicitly provide it.
         // If automatic implementation is disabled, it can also be ignored.
         if source == ImplSourceKind::ImplForeignType
-            && type_attributes.trait_flags.impl_type_path
+            && type_attributes.impl_switchs.impl_type_path
             && type_attributes.type_path.is_none()
         {
             return Err(syn::Error::new(
@@ -55,6 +55,15 @@ impl<'a> ReflectDerive<'a> {
         let meta = ReflectMeta::new(type_attributes, type_path);
 
         if meta.attrs().is_opaque {
+            if meta.attrs().impl_switchs.impl_reflect
+                && !meta.attrs().avail_traits.clone
+            {
+                return Err(syn::Error::new(
+                    input.ident.span(), 
+                    "#[reflect(clone)] must be specified when auto impl `Reflect` for Opaque Type.",
+                ));
+            }
+
             return Ok(Self::Opaque(meta));
         }
 

@@ -8,7 +8,7 @@ use crate::info::{
     StructInfo, TupleInfo, TupleStructInfo, Type, TypePathTable,
 };
 
-/// A Enum for representing the kind of type
+/// An enum representing the kind of type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReflectKind {
     Struct,
@@ -56,7 +56,7 @@ impl fmt::Display for ReflectKindError {
 
 impl error::Error for ReflectKindError {}
 
-/// A Enum for representing all type info
+/// An enum representing all type info.
 #[derive(Debug, Clone)]
 pub enum TypeInfo {
     Struct(StructInfo),
@@ -96,7 +96,7 @@ impl TypeInfo {
     impl_cast_method!(as_enum: Enum => EnumInfo);
     impl_cast_method!(as_opaque: Opaque => OpaqueInfo);
 
-    /// Get underlying [`Type`]
+    /// Returns the underlying [`Type`].
     pub fn ty(&self) -> &Type {
         // Not inline: Avoid recursive inline
         match self {
@@ -112,31 +112,31 @@ impl TypeInfo {
         }
     }
 
-    /// Get [`TypeId`]
+    /// Returns the [`TypeId`].
     #[inline]
     pub fn type_id(&self) -> TypeId {
         self.ty().id()
     }
 
-    /// Get [`TypePathTable`]
+    /// Returns the [`TypePathTable`].
     #[inline]
     pub fn type_path_table(&self) -> &TypePathTable {
         self.ty().type_path_table()
     }
 
-    /// Get full type name
+    /// Returns the full type name.
     #[inline]
     pub fn type_path(&self) -> &'static str {
         self.ty().path()
     }
 
-    /// Check if the types are same
+    /// Returns `true` if the types are the same.
     #[inline]
     pub fn type_is<T: Any>(&self) -> bool {
         self.ty().is::<T>()
     }
 
-    /// Get [`ReflectKind`]
+    /// Returns the [`ReflectKind`].
     #[inline]
     pub fn kind(&self) -> ReflectKind {
         match self {
@@ -178,7 +178,7 @@ impl TypeInfo {
         }
     }
 
-    /// Get docs
+    /// Returns the docs, if any.
     #[cfg(feature = "reflect_docs")]
     pub fn docs(&self) -> Option<&str> {
         // Not inline: Avoid recursive inline

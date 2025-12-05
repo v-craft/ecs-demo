@@ -18,7 +18,9 @@ pub struct SetInfo {
     ty: Type,
     generics: Generics,
     value_ty: Type,
+    // `TypeInfo` is created on the first visit, use function pointers to delay it.
     value_info: fn() -> &'static TypeInfo,
+    // Use `Option` to reduce unnecessary heap requests (when empty content).
     custom_attributes: Option<Arc<CustomAttributes>>,
     #[cfg(feature = "reflect_docs")]
     docs: Option<&'static str>,
@@ -31,8 +33,7 @@ impl SetInfo {
     impl_custom_attributes_fn!(custom_attributes);
     impl_with_custom_attributes!(custom_attributes);
 
-    /// Create a new container
-    #[inline]
+    /// Create a new [`SetInfo`]
     pub fn new<TSet: Set + TypePath, TValue: Reflect + Typed>() -> Self {
         Self {
             ty: Type::of::<TSet>(),

@@ -12,12 +12,13 @@ use crate::{
     ops::Tuple,
 };
 
-/// Container for storing compile-time tuple information
+/// Container for storing compile-time tuple information.
 #[derive(Clone, Debug)]
 pub struct TupleInfo {
     ty: Type,
     generics: Generics,
     fields: Box<[UnnamedField]>,
+    // Use `Option` to reduce unnecessary heap requests (when empty content).
     custom_attributes: Option<Arc<CustomAttributes>>,
     #[cfg(feature = "reflect_docs")]
     docs: Option<&'static str>,
@@ -30,13 +31,9 @@ impl TupleInfo {
     impl_custom_attributes_fn!(custom_attributes);
     impl_with_custom_attributes!(custom_attributes);
 
-    /// Create a new container
+    /// Creates a new [`TupleInfo`].
     ///
-    /// The order of fields inside the container is fixed
-    ///
-    /// During tuple implementation, there may be a large number of generic expansions.
-    /// So inlining is prohibited here.
-    #[inline(never)]
+    /// The order of fields inside the container is fixed.
     pub fn new<T: Tuple + TypePath>(fields: &[UnnamedField]) -> Self {
         Self {
             ty: Type::of::<T>(),
@@ -48,19 +45,19 @@ impl TupleInfo {
         }
     }
 
-    /// Get [`UnnamedField`] by field index
+    /// Returns the [`UnnamedField`] by index, if it exists.
     #[inline]
     pub fn field_at(&self, index: usize) -> Option<&UnnamedField> {
         self.fields.get(index)
     }
 
-    /// Get the iter of [`UnnamedField`]
+    /// Returns an iterator over the fields.
     #[inline]
     pub fn iter(&self) -> core::slice::Iter<'_, UnnamedField> {
         self.fields.iter()
     }
 
-    /// Get the number of fields
+    /// Returns the number of fields.
     #[inline]
     pub fn field_len(&self) -> usize {
         self.fields.len()

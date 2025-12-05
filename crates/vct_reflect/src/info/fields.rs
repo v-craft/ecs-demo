@@ -9,12 +9,14 @@ use crate::info::{
     type_struct::impl_type_fn,
 };
 
-/// named field(struct field)
+/// A named (struct) field.
 #[derive(Clone, Debug)]
 pub struct NamedField {
     ty: Type,
     name: &'static str,
+    // `TypeInfo` is created on the first visit, use function pointers to delay it.
     type_info: fn() -> &'static TypeInfo,
+    // Use `Option` to reduce unnecessary heap requests (when empty content).
     custom_attributes: Option<Arc<CustomAttributes>>,
     #[cfg(feature = "reflect_docs")]
     docs: Option<&'static str>,
@@ -26,7 +28,7 @@ impl NamedField {
     impl_custom_attributes_fn!(custom_attributes);
     impl_with_custom_attributes!(custom_attributes);
 
-    /// Create a new container
+    /// Creates a new [`NamedField`].
     #[inline]
     pub fn new<T: Typed>(name: &'static str) -> Self {
         Self {
@@ -39,25 +41,27 @@ impl NamedField {
         }
     }
 
-    /// Get field name
+    /// Returns the field name.
     #[inline]
     pub fn name(&self) -> &'static str {
         self.name
     }
 
-    /// Get field type info
+    /// Returns the field's [`TypeInfo`].
     #[inline]
     pub fn type_info(&self) -> &'static TypeInfo {
         (self.type_info)()
     }
 }
 
-/// unnamed field(tuple field)
+/// An unnamed (tuple) field.
 #[derive(Clone, Debug)]
 pub struct UnnamedField {
     ty: Type,
     index: usize,
+    // `TypeInfo` is created on the first visit, use function pointers to delay it.
     type_info: fn() -> &'static TypeInfo,
+    // Use `Option` to reduce unnecessary heap requests (when empty content).
     custom_attributes: Option<Arc<CustomAttributes>>,
     #[cfg(feature = "reflect_docs")]
     docs: Option<&'static str>,
@@ -69,7 +73,7 @@ impl UnnamedField {
     impl_custom_attributes_fn!(custom_attributes);
     impl_with_custom_attributes!(custom_attributes);
 
-    /// Create a new container
+    /// Creates a new [`UnnamedField`].
     #[inline]
     pub fn new<T: Typed>(index: usize) -> Self {
         Self {
@@ -82,20 +86,20 @@ impl UnnamedField {
         }
     }
 
-    /// Get field index
+    /// Returns the field index.
     #[inline]
     pub fn index(&self) -> usize {
         self.index
     }
 
-    /// Get field type info
+    /// Returns the field's [`TypeInfo`].
     #[inline]
     pub fn type_info(&self) -> &'static TypeInfo {
         (self.type_info)()
     }
 }
 
-/// A container for representing field names
+/// A container for representing field identifiers.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FieldId {
     Named(Cow<'static, str>),

@@ -36,6 +36,10 @@ macro_rules! impl_type_path_tuple {
             fn type_name() -> &'static str {
                 "()"
             }
+            #[inline]
+            fn type_ident() -> &'static str {
+                "()"
+            }
         }
     };
     (1: [$zero:ident]) => {
@@ -49,11 +53,11 @@ macro_rules! impl_type_path_tuple {
             }
 
             fn type_name() -> &'static str {
-                static CELL: GenericTypePathCell = GenericTypePathCell::new();
-                CELL.get_or_insert::<Self, _>(|| {
-                    // TODO: Replace to `alloc::slice::Concat` .
-                    concat(&["(" , $zero::type_name() , ",)"])
-                })
+                <Self as TypePath>::type_path()
+            }
+
+            fn type_ident() -> &'static str {
+                <Self as TypePath>::type_path()
             }
         }
     };
@@ -68,11 +72,11 @@ macro_rules! impl_type_path_tuple {
             }
 
             fn type_name() -> &'static str {
-                static CELL: GenericTypePathCell = GenericTypePathCell::new();
-                CELL.get_or_insert::<Self, _>(|| {
-                    // TODO: Replace to `alloc::slice::Concat` .
-                    concat(&["(", $zero::type_name() $(, ", ", $index::type_name())* , ")"])
-                })
+                <Self as TypePath>::type_path()
+            }
+
+            fn type_ident() -> &'static str {
+                <Self as TypePath>::type_path()
             }
         }
     };

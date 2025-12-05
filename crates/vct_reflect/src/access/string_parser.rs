@@ -9,7 +9,10 @@ impl<'a> Ident<'a> {
     /// A string that correctly represents a positive integer will be converted to [`Accessor::TupleIndex`].
     /// All other string will be converted to [`Accessor::Field`] (Including incorrect ident, such as "1a2").
     ///
-    /// Both start with dot and cannot be directly distinguished.
+    /// Parses an identifier after `.`:
+    /// - A positive integer becomes [`Accessor::TupleIndex`].
+    /// - Anything else becomes [`Accessor::FieldName`] (including invalid idents like `1a2`).
+    /// Both forms begin with `.` and cannot be distinguished without parsing the ident.
     #[inline(always)]
     fn field(self) -> Accessor<'a> {
         match self.0.parse() {

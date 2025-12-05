@@ -11,7 +11,7 @@ use serde::{
 use crate::{
     info::{NamedField, StructInfo, StructVariantInfo},
     ops::DynamicStruct,
-    registry::{TypeRegistry, TypeTraitDefault},
+    registry::TypeRegistry,
     serde::SkipSerde,
 };
 
@@ -135,10 +135,13 @@ where
     V: MapAccess<'de>,
     P: DeserializerProcessor,
 {
-    let mut dynamic_struct = DynamicStruct::new();
+    let mut dynamic_struct = DynamicStruct::with_capacity(info.field_len());
 
     while let Some(Ident(key)) = map.next_key::<Ident>()? {
         let field_ty = info.field::<V::Error>(&key)?.ty();
+
+        // cannot skip here, we need to call `next_value_seed`.
+
         let Some(type_traits) = registry.get(field_ty.id()) else {
             return Err(Error::custom(format!(
                 "no type_traits found for type `{field_ty:?}`"
@@ -153,40 +156,10 @@ where
         dynamic_struct.insert_boxed(key, value);
     }
 
-    // skip serde fields
     for field in info.iter_fields() {
         if let Some(skip_serde) = field.get_attribute::<SkipSerde>() {
-            if let Some(default_value) = &skip_serde.0 {
-                if default_value.type_id() != field.type_id() {
-                    return Err(Error::custom(format!(
-                        "The type of the default value (`{}`) in the custom attribute does not match the actual type `{}`.",
-                        default_value.reflect_type_path(),
-                        field.type_path(),
-                    )));
-                }
-                if let Ok(val) = default_value.reflect_clone() {
-                    dynamic_struct.insert_boxed(field.name(), val);
-                } else {
-                    return Err(Error::custom(format!(
-                        "The type of the default value (`{}`) in the custom attribute does not support `reflect_clone`.",
-                        field.type_path(),
-                    )));
-                }
-            } else {
-                let field_ty = field.ty();
-                let Some(type_traits) = registry.get(field_ty.id()) else {
-                    return Err(Error::custom(format!(
-                        "no type_traits found for type `{field_ty:?}`"
-                    )));
-                };
-                if let Some(default_value) = type_traits.get::<TypeTraitDefault>() {
-                    dynamic_struct.insert_boxed(field.name(), default_value.default());
-                } else {
-                    return Err(Error::custom(format!(
-                        "Field `{}` skipped serde, but no default value and not support `TypeTraitDefault`.",
-                        field.name(),
-                    )));
-                }
+             if let Some(val) = skip_serde.get(field.type_id(), registry)? {
+                dynamic_struct.insert_boxed(field.name(), val);
             }
         }
     }
@@ -208,51 +181,28 @@ where
     V: SeqAccess<'de>,
     P: DeserializerProcessor,
 {
-    let mut dynamic_struct = DynamicStruct::new();
 
     let len = info.field_len();
+    let mut dynamic_struct = DynamicStruct::with_capacity(len);
 
     for index in 0..len {
-        let field_info = info.field_at::<V::Error>(index)?;
-        let name = field_info.name();
+        let field = info.field_at::<V::Error>(index)?;
 
-        let Some(type_traits) = registry.get(field_info.type_id()) else {
-            return Err(Error::custom(format!(
-                "no type_traits found for type `{:?}`",
-                field_info.ty()
-            )));
-        };
-
-        // skip serde fields
-        if let Some(skip_serde) = field_info.get_attribute::<SkipSerde>() {
-            if let Some(default_value) = &skip_serde.0 {
-                if default_value.type_id() != field_info.type_id() {
-                    return Err(Error::custom(format!(
-                        "The type of the default value (`{}`) in the custom attribute does not match the actual type `{}`.",
-                        default_value.reflect_type_path(),
-                        field_info.type_path(),
-                    )));
-                }
-                if let Ok(val) = default_value.reflect_clone() {
-                    dynamic_struct.insert_boxed(field_info.name(), val);
-                } else {
-                    return Err(Error::custom(format!(
-                        "The type of the default value (`{}`) in the custom attribute does not support `reflect_clone`.",
-                        field_info.type_path(),
-                    )));
-                }
-            } else {
-                if let Some(default_value) = type_traits.get::<TypeTraitDefault>() {
-                    dynamic_struct.insert_boxed(field_info.name(), default_value.default());
-                } else {
-                    return Err(Error::custom(format!(
-                        "Field `{}` skipped serde, but no default value and not support `TypeTraitDefault`.",
-                        field_info.name(),
-                    )));
+        if field.has_attribute::<SkipSerde>() {
+            if let Some(skip_serde) = field.get_attribute::<SkipSerde>() {
+                if let Some(value) = skip_serde.get(field.type_id(), registry)? {
+                    dynamic_struct.insert_boxed(field.name(), value);
                 }
             }
             continue;
         }
+
+        let Some(type_traits) = registry.get(field.type_id()) else {
+            return Err(Error::custom(format!(
+                "no type_traits found for type `{:?}`",
+                field.ty()
+            )));
+        };
 
         let value = seq
             .next_element_seed(InternalDeserializer::new_internal(
@@ -261,7 +211,8 @@ where
                 processor.as_deref_mut(),
             ))?
             .ok_or_else(|| Error::invalid_length(index, &len.to_string().as_str()))?;
-        dynamic_struct.insert_boxed(name, value);
+
+        dynamic_struct.insert_boxed(field.name(), value);
     }
 
     Ok(dynamic_struct)

@@ -65,6 +65,7 @@ pub struct StructVariantInfo {
     fields: Box<[NamedField]>,
     field_names: Box<[&'static str]>,
     field_indices: HashMap<&'static str, usize>,
+    // Use `Option` to reduce unnecessary heap requests (when empty content).
     custom_attributes: Option<Arc<CustomAttributes>>,
     #[cfg(feature = "reflect_docs")]
     docs: Option<&'static str>,
@@ -152,6 +153,7 @@ impl StructVariantInfo {
 pub struct TupleVariantInfo {
     name: &'static str,
     fields: Box<[UnnamedField]>,
+    // Use `Option` to reduce unnecessary heap requests (when empty content).
     custom_attributes: Option<Arc<CustomAttributes>>,
     #[cfg(feature = "reflect_docs")]
     docs: Option<&'static str>,
@@ -209,6 +211,7 @@ impl TupleVariantInfo {
 #[derive(Clone, Debug)]
 pub struct UnitVariantInfo {
     name: &'static str,
+    // Use `Option` to reduce unnecessary heap requests (when empty content).
     custom_attributes: Option<Arc<CustomAttributes>>,
     #[cfg(feature = "reflect_docs")]
     docs: Option<&'static str>,
@@ -262,11 +265,11 @@ impl error::Error for VariantKindError {}
 /// Container for compile-time enum variant info.
 #[derive(Clone, Debug)]
 pub enum VariantInfo {
-    /// See [`StructVariantInfo`]
+    /// See [`StructVariantInfo`].
     Struct(StructVariantInfo),
-    /// See [`TupleVariantInfo`]
+    /// See [`TupleVariantInfo`].
     Tuple(TupleVariantInfo),
-    /// See [`UnitVariantInfo`]
+    /// See [`UnitVariantInfo`].
     Unit(UnitVariantInfo),
 }
 

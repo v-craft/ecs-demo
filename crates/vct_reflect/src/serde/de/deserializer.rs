@@ -105,8 +105,7 @@ impl<'de, P: DeserializerProcessor> DeserializeSeed<'de> for InternalDeserialize
                 let mut dynamic_struct = deserializer.deserialize_struct(
                     struct_info
                         .type_path_table()
-                        .ident()
-                        .unwrap_or(crate::serde::NO_IDENT),
+                        .ident(),
                     struct_info.field_names(),
                     StructVisitor {
                         struct_info,
@@ -122,8 +121,7 @@ impl<'de, P: DeserializerProcessor> DeserializeSeed<'de> for InternalDeserialize
                     deserializer.deserialize_newtype_struct(
                         tuple_struct_info
                             .type_path_table()
-                            .ident()
-                            .unwrap_or(crate::serde::NO_IDENT),
+                            .ident(),
                         TupleStructVisitor {
                             tuple_struct_info,
                             registry: self.registry,
@@ -134,8 +132,7 @@ impl<'de, P: DeserializerProcessor> DeserializeSeed<'de> for InternalDeserialize
                     deserializer.deserialize_tuple_struct(
                         tuple_struct_info
                             .type_path_table()
-                            .ident()
-                            .unwrap_or(crate::serde::NO_IDENT),
+                            .ident(),
                         tuple_struct_info.field_len(),
                         TupleStructVisitor {
                             tuple_struct_info,
@@ -201,7 +198,7 @@ impl<'de, P: DeserializerProcessor> DeserializeSeed<'de> for InternalDeserialize
             TypeInfo::Enum(enum_info) => {
                 let mut dynamic_enum = if enum_info.type_path_table().module_path()
                     == Some("core::option")
-                    && enum_info.type_path_table().ident() == Some("Option")
+                    && enum_info.type_path_table().ident() == "Option"
                 {
                     deserializer.deserialize_option(OptionVisitor {
                         enum_info,
@@ -210,7 +207,7 @@ impl<'de, P: DeserializerProcessor> DeserializeSeed<'de> for InternalDeserialize
                     })?
                 } else {
                     deserializer.deserialize_enum(
-                        enum_info.type_path_table().ident().unwrap(),
+                        enum_info.type_path_table().ident(),
                         enum_info.variant_names(),
                         EnumVisitor {
                             enum_info,
@@ -285,13 +282,13 @@ impl<'de, P: DeserializerProcessor> DeserializeSeed<'de> for ReflectDeserializer
             where
                 A: MapAccess<'de>,
             {
-                // Get `TypeTraits` from type_path
-                let registration = map
+                // Get `TypeTraits` from registry
+                let type_traits = map
                     .next_key_seed(TypePathDeserializer::new(self.registry))?
                     .ok_or_else(|| Error::invalid_length(0, &"a single entry"))?;
 
                 let value = map.next_value_seed(InternalDeserializer::new_internal(
-                    registration,
+                    type_traits,
                     self.registry,
                     self.processor,
                 ))?;

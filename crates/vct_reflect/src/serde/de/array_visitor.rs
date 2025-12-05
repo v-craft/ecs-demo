@@ -33,8 +33,7 @@ impl<'de, P: DeserializerProcessor> Visitor<'de> for ArrayVisitor<'_, P> {
             )));
         };
 
-        let mut vec: Vec<Box<dyn Reflect>> =
-            Vec::with_capacity(seq.size_hint().unwrap_or_default());
+        let mut vec: Vec<Box<dyn Reflect>> = Vec::with_capacity(self.array_info.capacity());
 
         while let Some(value) = seq.next_element_seed(InternalDeserializer::new_internal(
             type_traits,

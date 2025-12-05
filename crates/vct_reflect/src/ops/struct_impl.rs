@@ -9,14 +9,13 @@ use alloc::{borrow::Cow, boxed::Box, string::ToString, vec::Vec};
 use core::fmt;
 use vct_utils::collections::HashMap;
 
-/// Representing [`Struct`]`, used to dynamically modify the type of data and information.
+/// Represents a [`Struct`], used to dynamically modify data and its reflected type information.
 ///
-/// Dynamic types are special in that their TypeInfo is [`OpaqueInfo`],
-/// but other APIs are consistent with the type they represent, such as [`reflect_kind`], [`reflect_ref`]
+/// Dynamic types are special in that their `TypeInfo` is [`OpaqueInfo`],
+/// but other APIs behave like the represented type, such as [`reflect_kind`] and [`reflect_ref`].
 ///
 /// [`reflect_kind`]: crate::Reflect::reflect_kind
 /// [`reflect_ref`]: crate::Reflect::reflect_ref
-#[derive(Default)]
 pub struct DynamicStruct {
     struct_info: Option<&'static TypeInfo>,
     fields: Vec<Box<dyn Reflect>>,
@@ -36,8 +35,8 @@ impl TypePath for DynamicStruct {
     }
 
     #[inline]
-    fn type_ident() -> Option<&'static str> {
-        Some("DynamicStruct")
+    fn type_ident() -> &'static str {
+        "DynamicStruct"
     }
 
     #[inline]
@@ -59,6 +58,7 @@ impl Typed for DynamicStruct {
 }
 
 impl DynamicStruct {
+    /// Create a empty [`DynamicStruct`].
     #[inline]
     pub const fn new() -> Self {
         Self {
@@ -68,6 +68,19 @@ impl DynamicStruct {
             field_indices: HashMap::<_, _>::new(),
         }
     }
+
+    /// See [`Vec::with_capacity`]
+    #[inline]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            struct_info: None,
+            fields: Vec::with_capacity(capacity),
+            field_names: Vec::with_capacity(capacity),
+            field_indices: HashMap::<_, _>::with_capacity(capacity),
+        }
+    }
+
+
     /// Sets the [`StructInfo`] to be represented by this `DynamicStruct`.
     #[inline]
     pub fn set_type_info(&mut self, struct_info: Option<&'static TypeInfo>) {
@@ -173,7 +186,7 @@ impl fmt::Debug for DynamicStruct {
 
 impl<'a, N: Into<Cow<'static, str>>> FromIterator<(N, Box<dyn Reflect>)> for DynamicStruct {
     fn from_iter<T: IntoIterator<Item = (N, Box<dyn Reflect>)>>(fields: T) -> Self {
-        let mut dynamic_struct = Self::default();
+        let mut dynamic_struct = DynamicStruct::new();
         for (name, value) in fields.into_iter() {
             dynamic_struct.insert_boxed(name, value);
         }
@@ -232,7 +245,7 @@ pub trait Struct: Reflect {
 
     /// Creates a new [`DynamicStruct`] from this struct.
     fn to_dynamic_struct(&self) -> DynamicStruct {
-        let mut dynamic_struct = DynamicStruct::default();
+        let mut dynamic_struct = DynamicStruct::with_capacity(self.field_len());
         dynamic_struct.set_type_info(self.represented_type_info());
         for (i, val) in self.iter_fields().enumerate() {
             dynamic_struct.insert_boxed(self.name_at(i).unwrap().to_string(), val.to_dynamic());

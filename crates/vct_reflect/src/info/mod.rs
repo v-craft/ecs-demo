@@ -10,6 +10,9 @@ pub use type_struct::Type;
 mod attributes;
 pub use attributes::CustomAttributes;
 
+mod const_param_data;
+pub use const_param_data::ConstParamData;
+
 mod generics;
 pub use generics::{ConstParamInfo, GenericInfo, Generics, TypeParamInfo};
 
@@ -54,6 +57,3 @@ pub use type_info_impl::{ReflectKind, ReflectKindError, TypeInfo};
 
 mod typed;
 pub use typed::{DynamicTyped, Typed};
-
-// mod type_info_stack;
-// pub(crate) use type_info_stack::TypeInfoStack;

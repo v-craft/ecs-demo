@@ -12,15 +12,17 @@ use crate::{
     ops::Map,
 };
 
-/// Container for storing compile-time map-like information
+/// Container for storing compile-time map-like information.
 #[derive(Clone, Debug)]
 pub struct MapInfo {
     ty: Type,
     generics: Generics,
     key_ty: Type,
     value_ty: Type,
+    // `TypeInfo` is created on the first visit, use function pointers to delay it.
     key_info: fn() -> &'static TypeInfo,
     value_info: fn() -> &'static TypeInfo,
+    // Use `Option` to reduce unnecessary heap requests (when empty content).
     custom_attributes: Option<Arc<CustomAttributes>>,
     #[cfg(feature = "reflect_docs")]
     docs: Option<&'static str>,
@@ -33,8 +35,7 @@ impl MapInfo {
     impl_custom_attributes_fn!(custom_attributes);
     impl_with_custom_attributes!(custom_attributes);
 
-    /// Create a new container
-    #[inline]
+    /// Creates a new [`MapInfo`].
     pub fn new<TMap: Map + TypePath, TKey: Reflect + Typed, TValue: Reflect + Typed>() -> Self {
         Self {
             ty: Type::of::<TMap>(),
@@ -49,25 +50,25 @@ impl MapInfo {
         }
     }
 
-    /// Get the [`TypeInfo`] of the key
+    /// Returns the [`TypeInfo`] of the key.
     #[inline]
     pub fn key_info(&self) -> &'static TypeInfo {
         (self.key_info)()
     }
 
-    /// Get the [`Type`] of the key
+    /// Returns the [`Type`] of the key.
     #[inline]
     pub fn key_ty(&self) -> Type {
         self.key_ty
     }
 
-    /// Get the [`TypeInfo`] of the value
+    /// Returns the [`TypeInfo`] of the value.
     #[inline]
     pub fn value_info(&self) -> &'static TypeInfo {
         (self.value_info)()
     }
 
-    /// Get the [`Type`] of the value
+    /// Returns the [`Type`] of the value.
     #[inline]
     pub fn value_ty(&self) -> Type {
         self.value_ty

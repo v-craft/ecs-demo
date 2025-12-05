@@ -44,8 +44,7 @@ impl<P: SerializerProcessor> Serialize for StructSerializer<'_, P> {
         let mut state = serializer.serialize_struct(
             struct_info
                 .type_path_table()
-                .ident()
-                .unwrap_or(crate::serde::NO_IDENT),
+                .ident(),
             field_len,
         )?;
 

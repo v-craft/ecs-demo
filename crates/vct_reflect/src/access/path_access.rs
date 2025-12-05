@@ -9,11 +9,11 @@ use core::fmt;
 /// An error returned from a failed path access.
 #[derive(Debug, PartialEq, Eq)]
 pub enum PathAccessError<'a> {
-    /// An error caused by an invalid path string that couldn't be parsed.
-    /// see [`ParseError`] for details.
+    /// A path string that could not be parsed.
+    /// See [`ParseError`] for details.
     ParseError(ParseError<'a>),
-    /// An error caused by trying to access a path that's not able to be accessed,
-    /// see [`AccessError`] for details.
+    /// Access failed after parsing.
+    /// See [`AccessError`] for details.
     AccessError(AccessError<'a>),
     /// An error that occurs when a type cannot downcast to a given type.
     InvalidDowncast,
@@ -48,7 +48,7 @@ impl<'a> From<AccessError<'a>> for PathAccessError<'a> {
     }
 }
 
-/// Reusable path accessor, wrapper of [`Vec<OffsetAccessor>`] .
+/// Reusable path accessor, a thin wrapper over [`Vec<OffsetAccessor>`].
 ///
 /// [`OffsetAccessor`] and [`Accessor`] only allow access to a single level,
 /// while this type allows for complete path queries.
@@ -68,17 +68,17 @@ impl From<Vec<OffsetAccessor<'static>>> for PathAccessor {
 }
 
 impl PathAccessor {
-    /// Parse the path string and create an [`PathAccessor`].
-    /// If the path is incorrect, it will return [`ParseError`].
+    /// Parses the path string and creates a [`PathAccessor`].
+    /// Returns [`ParseError`] if parsing fails.
     ///
     /// This function will create a [`String`] for each path segment.
-    /// For '&'static str' or `impl AccessPath<'static>`,
-    /// consider using ['parse_static'] for better performance.
+    /// For `&'static str` or `impl AccessPath<'static>`,
+    /// consider using [`parse_static`] for better performance.
     ///
     /// [`Vec::shrink_to_fit`] will be called internally.
     ///
     /// [`String`]: alloc::string::String
-    /// ['parse_static']: crate::access::PathAccessor::parse_static
+    /// [`parse_static`]: crate::access::PathAccessor::parse_static
     pub fn parse<'a>(path: impl AccessPath<'a>) -> Result<Self, ParseError<'a>> {
         let mut vc: Vec<OffsetAccessor> = Vec::with_capacity(10);
         for res in path.parse_to_accessor() {
@@ -88,11 +88,11 @@ impl PathAccessor {
         Ok(Self(vc))
     }
 
-    /// Parse the path and create an [`PathAccessor`].
-    /// If the path is incorrect, it will return [`ParseError`].
+    /// Parses the path and creates a [`PathAccessor`].
+    /// Returns [`ParseError`] if parsing fails.
     ///
-    /// Can only be used for '&'static str' or `impl AccessPath<'static>`,
-    /// internal storage string references, no need to create additional [`String`].
+    /// For `&'static str` or `impl AccessPath<'static>`; stores string references without
+    /// creating additional [`String`]s.
     ///
     /// [`Vec::shrink_to_fit`] will be called internally.
     ///
@@ -106,8 +106,7 @@ impl PathAccessor {
         Ok(Self(vc))
     }
 
-    /// Return the length of the internal [`Vec`],
-    /// which is the number of [`OffsetAccessor`].
+    /// Returns the length of the internal [`Vec`] (number of [`OffsetAccessor`]s).
     #[inline]
     pub fn len(&self) -> usize {
         self.0.len()

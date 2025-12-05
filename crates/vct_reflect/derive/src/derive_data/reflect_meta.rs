@@ -43,9 +43,6 @@ impl<'a> ReflectMeta<'a> {
     }
 
     pub fn with_generics_expression(&self) -> proc_macro2::TokenStream{
-        if !self.attrs.trait_flags.impl_type_path {
-            return crate::utils::empty();
-        }
         let vct_reflect_path = &self.vct_reflect_path;
         let generics_ = crate::path::generics_(vct_reflect_path);
         let generic_info_ = crate::path::generic_info_(vct_reflect_path);
@@ -105,7 +102,6 @@ impl<'a> ReflectMeta<'a> {
     /// For Opaque Type
     pub fn to_info_tokens(&self) -> proc_macro2::TokenStream {
         let vct_reflect_path = &self.vct_reflect_path;
-
 
         let opaque_info_ = crate::path::opaque_info_(vct_reflect_path);
         let type_info_ = crate::path::type_info_(vct_reflect_path);

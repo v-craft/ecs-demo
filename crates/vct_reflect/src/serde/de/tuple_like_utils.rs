@@ -4,7 +4,7 @@ use serde::de::{Error, SeqAccess};
 use crate::{
     info::{TupleInfo, TupleStructInfo, TupleVariantInfo, UnnamedField},
     ops::DynamicTuple,
-    registry::{TypeRegistry, TypeTraitDefault},
+    registry::TypeRegistry,
     serde::SkipSerde,
 };
 
@@ -80,9 +80,8 @@ where
     V: SeqAccess<'de>,
     P: DeserializerProcessor,
 {
-    let mut dynamic_tuple = DynamicTuple::new();
-
     let len = info.field_len();
+    let mut dynamic_tuple = DynamicTuple::with_capacity(len);
 
     for index in 0..len {
         let field_info = info.field_at::<V::Error>(index)?;
@@ -96,30 +95,8 @@ where
 
         // skip serde fields
         if let Some(skip_serde) = field_info.get_attribute::<SkipSerde>() {
-            if let Some(default_value) = &skip_serde.0 {
-                if default_value.type_id() != field_info.type_id() {
-                    return Err(Error::custom(format!(
-                        "The type of the default value (`{}`) in the custom attribute does not match the actual type `{}`.",
-                        default_value.reflect_type_path(),
-                        field_info.type_path(),
-                    )));
-                }
-                if let Ok(val) = default_value.reflect_clone() {
-                    dynamic_tuple.insert_boxed(val);
-                } else {
-                    return Err(Error::custom(format!(
-                        "The type of the default value (`{}`) in the custom attribute does not support `reflect_clone`.",
-                        field_info.type_path(),
-                    )));
-                }
-            } else {
-                if let Some(default_value) = type_traits.get::<TypeTraitDefault>() {
-                    dynamic_tuple.insert_boxed(default_value.default());
-                } else {
-                    return Err(Error::custom(format!(
-                        "Field `{index}` skipped serde, but no default value and not support `TypeTraitDefault`.",
-                    )));
-                }
+            if let Some(val) = skip_serde.get(field_info.type_id(), registry)? {
+                dynamic_tuple.insert_boxed(val);
             }
             continue;
         }

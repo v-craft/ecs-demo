@@ -7,7 +7,7 @@ pub trait TypePath: 'static {
     /// `Option<Vec<usize>>` -> `"core::option::Option<alloc::vec::Vec<usize>>"`
     fn type_path() -> &'static str;
 
-    /// Returns a short, pretty-print enabled path to the type.
+    /// Returns a short, pretty-print-enabled path to the type.
     ///
     /// `Option<Vec<usize>>` -> `"Option<Vec<usize>>"`
     ///
@@ -18,9 +18,7 @@ pub trait TypePath: 'static {
     /// Returns the name of the type, or [`None`] if it is [anonymous].
     ///
     /// `Option<Vec<usize>>` -> `"Option"`
-    fn type_ident() -> Option<&'static str> {
-        None
-    }
+    fn type_ident() -> &'static str;
 
     /// Returns the name of the crate the type is in, or [`None`] if it is [anonymous].
     ///
@@ -48,7 +46,7 @@ pub trait DynamicTypePath {
     fn reflect_type_name(&self) -> &str;
 
     /// See [`TypePath::type_ident`].
-    fn reflect_type_ident(&self) -> Option<&str>;
+    fn reflect_type_ident(&self) -> &str;
 
     /// See [`TypePath::crate_name`].
     fn reflect_crate_name(&self) -> Option<&str>;
@@ -69,7 +67,7 @@ impl<T: TypePath> DynamicTypePath for T {
     }
 
     #[inline]
-    fn reflect_type_ident(&self) -> Option<&str> {
+    fn reflect_type_ident(&self) -> &str {
         Self::type_ident()
     }
 
@@ -93,7 +91,7 @@ pub struct TypePathTable {
     // so only cache A here to reduce unnecessary overhead.
     type_path: &'static str,
     type_name: fn() -> &'static str,
-    type_ident: fn() -> Option<&'static str>,
+    type_ident: fn() -> &'static str,
     crate_name: fn() -> Option<&'static str>,
     module_path: fn() -> Option<&'static str>,
 }
@@ -125,7 +123,7 @@ impl TypePathTable {
 
     /// See [`TypePath::type_ident`]
     #[inline]
-    pub fn ident(&self) -> Option<&'static str> {
+    pub fn ident(&self) -> &'static str {
         (self.type_ident)()
     }
 

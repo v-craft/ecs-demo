@@ -24,15 +24,15 @@ pub(crate) enum TypePathParser<'a> {
 }
 
 impl<'a> TypePathParser<'a> {
-    /// return `true` if self is `Local/Foreign` ans has custom path
-    pub fn has_custom_path(&self) -> bool {
-        match self {
-            Self::Local{ custom_path, .. } | Self::Foreign{ custom_path, .. } => {
-                custom_path.is_some()
-            }
-            _ => false,
-        }
-    }
+    // /// return `true` if self is `Local/Foreign` ans has custom path
+    // pub fn has_custom_path(&self) -> bool {
+    //     match self {
+    //         Self::Local{ custom_path, .. } | Self::Foreign{ custom_path, .. } => {
+    //             custom_path.is_some()
+    //         }
+    //         _ => false,
+    //     }
+    // }
 
     pub fn generics(&self) -> &'a Generics {
         // Use a constant because we need to return a reference of at least 'a.
@@ -51,7 +51,7 @@ impl<'a> TypePathParser<'a> {
 
     /// Whether an implementation of `Typed` or `TypePath` should be generic.
     pub fn impl_with_generic(&self) -> bool {
-        // Implementation based on generics requires no lifecycle parameters.
+        // exist non-lifecycle generic parameters 
         !self
             .generics()
             .params
@@ -59,6 +59,7 @@ impl<'a> TypePathParser<'a> {
             .all(|param| matches!(param, GenericParam::Lifetime(_)))
     }
 
+    /// This name is used in `impl ... for #real_ident {...}`.
     pub fn real_ident(&self) -> proc_macro2::TokenStream {
         match self {
             Self::Local { ident, .. } | Self::Primitive(ident) => ident.to_token_stream(),
@@ -66,44 +67,29 @@ impl<'a> TypePathParser<'a> {
         }
     }
 
-    // /// Get the real type
-    // pub fn real_type(&self) -> proc_macro2::TokenStream {
-    //     match self {
-    //         Self::Primitive(ident) => quote!(#ident),
-    //         Self::Local{ ident, generics, .. } => {
-    //             let (_, ty_generics, _) = generics.split_for_impl();
-    //             quote!(#ident #ty_generics)
-    //         }
-    //         Self::Foreign{ path, generics, .. } => {
-    //             let (_, ty_generics, _) = generics.split_for_impl();
-    //             quote!(#path #ty_generics)
-    //         }
-    //     }
-    // }
-
     /// Try to get (custom) ident
-    pub fn get_ident(&self) -> Option<&Ident> {
+    pub fn get_ident(&self) -> &Ident {
         match self {
-            Self::Primitive(ident) => Some(ident),
-            Self::Local{ ident, custom_path, .. } => Some(
+            Self::Primitive(ident) => ident,
+            Self::Local{ ident, custom_path, .. } => {
                 custom_path
                     .as_ref()
                     .map(|path| &path.segments.last().unwrap().ident)
-                    .unwrap_or(ident),
-            ),
-            Self::Foreign{ path, custom_path, .. } => Some(
+                    .unwrap_or(ident)
+            },
+            Self::Foreign{ path, custom_path, .. } => {
                 &custom_path
                     .as_ref()
                     .unwrap_or(path)
                     .segments
                     .last()
                     .unwrap()
-                    .ident,
-            ),
+                    .ident
+            },
         }
     }
 
-    /// Try to get (custom) path
+    /// Try to get full (custom) path.
     pub fn get_path(&self) -> Option<&Path> {
         match self {
             Self::Local{ custom_path, .. } => custom_path.as_ref(),
@@ -152,8 +138,8 @@ impl<'a> TypePathParser<'a> {
         }
     }
 
-    pub fn type_ident(&self) -> Option<StringExpr> {
-        self.get_ident().map(StringExpr::from)
+    pub fn type_ident(&self) -> StringExpr {
+        StringExpr::from(self.get_ident())
     }
 
     /// Combines type generics and const generics into one [`StringExpr`].
@@ -195,9 +181,7 @@ impl<'a> TypePathParser<'a> {
         match self {
             Self::Primitive(ident) => StringExpr::from(ident),
             Self::Local{ generics, .. } | Self::Foreign{ generics, .. } => {
-                let ident = self.type_ident().unwrap_or_else(||{
-                    panic!("Non-Primitive type, try to parse type_name but get type_ident fail.");
-                });
+                let ident = self.type_ident();
 
                 if self.impl_with_generic() {
                     let type_path_ = crate::path::type_path_(vct_reflect_path);
@@ -232,9 +216,7 @@ impl<'a> TypePathParser<'a> {
         match self {
             Self::Primitive(ident) => StringExpr::from(ident),
             Self::Local{ generics, .. } | Self::Foreign{ generics, .. } => {
-                let ident = self.type_ident().unwrap_or_else(||{
-                    panic!("Non-Primitive type, try to parse type_path but get type_ident fail.");
-                });
+                let ident = self.type_ident();
                 let module_path = self.module_path().unwrap_or_else(||{
                     panic!("Non-Primitive type, try to parse type_path but get module_path fail.");
                 });

@@ -8,11 +8,6 @@ pub(crate) struct CustomAttributes {
 }
 
 impl CustomAttributes {
-    /// Is the collection empty?
-    pub fn is_empty(&self) -> bool {
-        self.attributes.is_empty()
-    }
-
     /// Inserts a custom attribute into the list.
     pub fn push(&mut self, value: Expr) -> syn::Result<()> {
         self.attributes.push(value);
@@ -43,7 +38,7 @@ impl CustomAttributes {
     /// 
     /// The type path will be parsed before returning.
     pub fn get_expression_with(&self, vct_reflect_path: &Path) -> TokenStream {
-        if self.is_empty() {
+        if self.attributes.is_empty() {
             return crate::utils::empty();
         }
 
@@ -61,24 +56,6 @@ impl CustomAttributes {
             )
         }
     }
-
-
-    // /// Generates a `TokenStream` for `CustomAttributes` construction.
-    // pub fn to_tokens(&self, vct_reflect_path: &Path) -> TokenStream {
-    //     // See vct_reflect::info::attribute.rs
-    //     let custom_attributes_path = crate::path::custom_attributes_(vct_reflect_path);
-
-    //     let attributes = self.attributes.iter().map(|value| {
-    //         quote! {
-    //             .with_attribute(#value)
-    //         }
-    //     });
-        
-    //     quote! {
-    //         #custom_attributes_path::new()
-    //             #(#attributes)*
-    //     }
-    // }
 }
 
 

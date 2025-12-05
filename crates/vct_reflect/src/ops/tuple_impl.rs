@@ -8,14 +8,13 @@ use crate::{
 use alloc::{boxed::Box, vec::Vec};
 use core::fmt;
 
-/// Representing [`Tuple`]`, used to dynamically modify the type of data and information.
+/// Represents a [`Tuple`], used to dynamically modify data and its reflected type information.
 ///
-/// Dynamic types are special in that their TypeInfo is [`OpaqueInfo`],
-/// but other APIs are consistent with the type they represent, such as [`reflect_kind`], [`reflect_ref`]
+/// Dynamic types are special in that their `TypeInfo` is [`OpaqueInfo`],
+/// but other APIs behave like the represented type, such as [`reflect_kind`] and [`reflect_ref`].
 ///
 /// [`reflect_kind`]: crate::Reflect::reflect_kind
 /// [`reflect_ref`]: crate::Reflect::reflect_ref
-#[derive(Default)]
 pub struct DynamicTuple {
     tuple_info: Option<&'static TypeInfo>,
     fields: Vec<Box<dyn Reflect>>,
@@ -33,8 +32,8 @@ impl TypePath for DynamicTuple {
     }
 
     #[inline]
-    fn type_ident() -> Option<&'static str> {
-        Some("DynamicTuple")
+    fn type_ident() -> &'static str {
+        "DynamicTuple"
     }
 
     #[inline]
@@ -56,11 +55,21 @@ impl Typed for DynamicTuple {
 }
 
 impl DynamicTuple {
+    /// Create a empty [`DynamicTuple`].
     #[inline]
     pub const fn new() -> Self {
         Self {
             tuple_info: None,
             fields: Vec::new(),
+        }
+    }
+
+    /// See [`Vec::with_capacity`]
+    #[inline]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            tuple_info: None,
+            fields: Vec::with_capacity(capacity),
         }
     }
 

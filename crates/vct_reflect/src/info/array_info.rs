@@ -12,14 +12,16 @@ use crate::{
     ops::Array,
 };
 
-/// Container for storing compile-time array information
+/// Container for storing compile-time array information.
 #[derive(Clone, Debug)]
 pub struct ArrayInfo {
     ty: Type,
     generics: Generics,
     item_ty: Type,
-    item_info: fn() -> &'static TypeInfo, // `TypeInfo` is created on the first visit
+    // `TypeInfo` is created on the first visit, use function pointers to delay it.
+    item_info: fn() -> &'static TypeInfo,
     capacity: usize,
+    // Use `Option` to reduce unnecessary heap requests (when empty content).
     custom_attributes: Option<Arc<CustomAttributes>>,
     #[cfg(feature = "reflect_docs")]
     docs: Option<&'static str>,
@@ -32,12 +34,9 @@ impl ArrayInfo {
     impl_custom_attributes_fn!(custom_attributes);
     impl_with_custom_attributes!(custom_attributes);
 
-    /// create a new container
-    ///
-    /// During tuple implementation, there may be a large number of generic expansions.
-    /// So inlining is prohibited here.
-    #[inline(never)]
+    /// Create a new [`ArrayInfo`].
     pub fn new<TArray: Array + TypePath, TItem: Reflect + Typed>(capacity: usize) -> Self {
+        // Not Inline: Perhaps it can reduce compilation time.
         Self {
             ty: Type::of::<TArray>(),
             generics: Generics::new(),
@@ -50,19 +49,19 @@ impl ArrayInfo {
         }
     }
 
-    /// Get array capacity (fixed)
+    /// Returns the fixed array capacity.
     #[inline]
     pub fn capacity(&self) -> usize {
         self.capacity
     }
 
-    /// Get the `TypeInfo` of array items
+    /// Returns the [`TypeInfo`] of array items.
     #[inline]
     pub fn item_info(&self) -> &'static TypeInfo {
         (self.item_info)()
     }
 
-    /// Get the `Type` of array item
+    /// Returns the [`Type`] of an array item.
     #[inline]
     pub fn item_ty(&self) -> Type {
         self.item_ty

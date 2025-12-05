@@ -55,8 +55,8 @@ pub trait Reflect: DynamicTypePath + DynamicTyped + Send + Sync + Any {
 
     /// Performs a type-checked assignment of a reflected value to this value.
     ///
-    /// This is a fixed type set, efficient but the type cannot be incorrect.
-    /// Loose assignment, please use [`Reflect::try_apply`].
+    /// This is strict but fast; to allow compatible-but-not-identical inputs,
+    /// use [`Reflect::try_apply`].
     ///
     /// # Normal Impl
     ///
@@ -115,16 +115,15 @@ pub trait Reflect: DynamicTypePath + DynamicTyped + Send + Sync + Any {
 
     /// Converts this reflected value into its dynamic representation based on its [kind].
     ///
-    /// This function will clone a piece of data and will not be modified on its own.
-    ///
-    /// The new data will be completely dynamically typed (except for the bottom layer 'opaque'),
-    /// rather than just modifying one layer.
+    /// Clones the value into a fully dynamic representation (opaque remains opaque) without
+    /// mutating the original.
     ///
     /// # Panics
     ///
     /// This method will panic if the [kind] is [opaque] and the call to [`reflect_clone`] fails.
     ///
-    /// [kind]: PartialReflect::reflect_kind
+    /// [kind]: Reflect::reflect_kind
+    /// [opaque]: ReflectKind::Opaque
     fn to_dynamic(&self) -> Box<dyn Reflect> {
         // Not inline: inline for dynamic objects is useless.
         match self.reflect_ref() {
@@ -138,8 +137,11 @@ pub trait Reflect: DynamicTypePath + DynamicTyped + Send + Sync + Any {
             ReflectRef::Map(dyn_map) => Box::new(dyn_map.to_dynamic_map()),
             ReflectRef::Set(dyn_set) => Box::new(dyn_set.to_dynamic_set()),
             ReflectRef::Enum(dyn_enum) => Box::new(dyn_enum.to_dynamic_enum()),
-            ReflectRef::Opaque(value) => value.reflect_clone().unwrap_or_else(|_|{
-                panic!("`Reflect::to_dynamic` failed because `Opaque` type `{}` is not support `reflect_clone`.", value.reflect_type_info().type_path());
+            ReflectRef::Opaque(value) => value.reflect_clone().unwrap_or_else(|_| {
+                panic!(
+                    "`Reflect::to_dynamic` failed because opaque type `{}` does not support `reflect_clone`.",
+                    value.reflect_type_path()
+                );
             }),
         }
     }
@@ -147,12 +149,12 @@ pub trait Reflect: DynamicTypePath + DynamicTyped + Send + Sync + Any {
     /// Applies a reflected value to this value.
     ///
     /// This `apply` function will not delete its original content beforehand.
-    /// If self is a dynamic date type, please clean self up in advance (or use an empty container).
+    /// If `self` is a dynamic data type, clear it first (or start from an empty container).
     fn try_apply(&mut self, value: &dyn Reflect) -> Result<(), ApplyError>;
 
     /// Applies a reflected value to this value.
     ///
-    /// Usually not required to implement, default to using try_apply.
+    /// Usually not required to implement; defaults to using [`Reflect::try_apply`].
     ///
     /// # Panics
     ///
@@ -170,7 +172,7 @@ pub trait Reflect: DynamicTypePath + DynamicTyped + Send + Sync + Any {
     /// Attempts to clone `Self` using reflection.
     ///
     /// Unlike [`to_dynamic`], which generally returns a dynamic representation of `Self`,
-    /// this method attempts create a clone of `Self` directly, if possible.
+    /// this method attempts to create a clone of `Self` directly, if possible.
     #[inline]
     fn reflect_clone(&self) -> Result<Box<dyn Reflect>, ReflectCloneError> {
         Err(ReflectCloneError::NotImplemented {
@@ -283,6 +285,11 @@ impl TypePath for dyn Reflect {
     fn type_name() -> &'static str {
         "dyn Reflect"
     }
+    #[inline]
+    fn type_ident() -> &'static str {
+        "dyn Reflect"
+    }
+    
 }
 
 impl Typed for dyn Reflect {

@@ -1,11 +1,11 @@
 use syn::{
-    Attribute, Expr, ExprLit, ExprPath, Lit, MacroDelimiter, Meta, MetaList, MetaNameValue, Path, Token, TypePath, parse::ParseStream, spanned::Spanned
+    Attribute, Expr, ExprLit, Lit, MacroDelimiter, Meta, MetaList, MetaNameValue, Path, Token, parse::ParseStream, spanned::Spanned
 };
 
 use crate::{
     REFLECT_ATTRIBUTE_NAME,
     derive_data::{
-        CustomAttributes, MethodFlag, MethodImplFlags, ReflectDocs, TraitImplFlags
+        CustomAttributes, TraitAvailableFlags, ReflectDocs, TraitImplSwitches
     }
 };
 
@@ -20,18 +20,16 @@ mod kw {
     syn::custom_keyword!(Tuple);
     syn::custom_keyword!(Enum);
     syn::custom_keyword!(opaque);
-    syn::custom_keyword!(clone);
-    syn::custom_keyword!(Clone);    
-    syn::custom_keyword!(debug);
-    syn::custom_keyword!(Debug);
-    syn::custom_keyword!(hash);
-    syn::custom_keyword!(Hash);
-    syn::custom_keyword!(partial_eq);
-    syn::custom_keyword!(PartialEq);
-    syn::custom_keyword!(Default);
-    syn::custom_keyword!(Internal);
-    syn::custom_keyword!(type_path);
     syn::custom_keyword!(auto_register);
+    syn::custom_keyword!(default);
+    syn::custom_keyword!(clone);
+    syn::custom_keyword!(debug);
+    syn::custom_keyword!(hash);
+    syn::custom_keyword!(partial_eq);
+    syn::custom_keyword!(serialize);
+    syn::custom_keyword!(deserialize);
+    syn::custom_keyword!(serde);
+    syn::custom_keyword!(type_path);
     syn::custom_keyword!(docs);
 }
 
@@ -40,19 +38,17 @@ pub(crate) struct TypeAttributes {
     /// See: [`CustomAttributes`]
     pub custom_attributes: CustomAttributes,
     /// See: [`TraitImplFlags`]
-    pub trait_flags: TraitImplFlags,
+    pub impl_switchs: TraitImplSwitches,
     /// See: [`MethodImplFlags`]
-    pub method_flags: MethodImplFlags,
-    /// By default, only types like `struct A;` are `Opaque`, but user can use `#[reflect(Opaque)]` to enable it explicitly.
+    pub avail_traits: TraitAvailableFlags,
+    /// By default, only types like `struct A;` are `Opaque`, but user can use `#[reflect(opaque)]` to enable it explicitly.
     pub is_opaque: bool,
-    /// Default is false, use `#[reflect(auto_register)]` or `#[reflect(auto_register = true)]` to enable i.
+    /// Default is false, use `#[reflect(auto_register)]` or `#[reflect(auto_register)]` to enable i.
     pub auto_register: bool,
     /// Default is None, So the macro will be auto generated. Use `#[reflect(type_path = "...")]` to set it.
     pub type_path: Option<Path>,
     /// Default is Empty Docs,  Use `///`, `#[doc = ""]` or `#[reflect(docs = "")]` to set it, Can set multi-lines.
     pub docs: ReflectDocs,
-    /// Default is None,  Use `#[reflect(alias = ...)]` to set it.
-    pub alias: Option<TypePath>,
 }
 
 impl TypeAttributes {
@@ -63,9 +59,7 @@ impl TypeAttributes {
         for attribute in attrs {
             match &attribute.meta {
                 Meta::List(meta_list) if meta_list.path.is_ident(REFLECT_ATTRIBUTE_NAME) => {
-                    // ↑ Must be `#[reflect(...)]` instead of `#[key = val]` or `#[attr]`.
                     if let MacroDelimiter::Paren(_) = meta_list.delimiter {
-                        // ↑ Muse use `()` in `#[reflect(...)]`, instead of `{...}` or `[...]`.
                         type_attributes.parse_meta_list(meta_list)?;
                     } else {
                         return Err(syn::Error::new(
@@ -105,24 +99,33 @@ impl TypeAttributes {
 
     fn parse_inner_attribute(&mut self, input: ParseStream) -> syn::Result<()> {
         let lookahead = input.lookahead1();
+        // This order is related to the probability of the ideal state occurring.
         if lookahead.peek(Token![@]) {
             self.parse_custom_attribute(input)
         } else if lookahead.peek(kw::docs) {
             self.parse_docs(input)
-        } else if lookahead.peek(kw::type_path) {
-            self.parse_type_path(input)
+        } else if lookahead.peek(kw::default) {
+            self.parse_default(input)
         } else if lookahead.peek(kw::clone) {
-            self.parse_reflect_clone(input)
-        } else if lookahead.peek(kw::debug) {
-            self.parse_reflect_debug(input)
+            self.parse_clone(input)
         } else if lookahead.peek(kw::hash) {
-            self.parse_reflect_hash(input)
+            self.parse_hash(input)
         } else if lookahead.peek(kw::partial_eq) {
-            self.parse_reflect_patrial_eq(input)
+            self.parse_patrial_eq(input)
+        } else if lookahead.peek(kw::debug) {
+            self.parse_debug(input)
+        } else if lookahead.peek(kw::serde) {
+            self.parse_serde(input)
+        } else if lookahead.peek(kw::serialize) {
+            self.parse_serialize(input)
+        } else if lookahead.peek(kw::deserialize) {
+            self.parse_deserialize(input)
         } else if lookahead.peek(kw::opaque) {
             self.parse_opaque(input)
         } else if lookahead.peek(kw::auto_register) {
             self.parse_auto_register(input)
+        } else if lookahead.peek(kw::type_path) {
+            self.parse_type_path(input)
         } else if lookahead.peek(kw::TypePath) {
             self.parse_trait_type_path(input)
         } else if lookahead.peek(kw::Typed) {
@@ -146,257 +149,92 @@ impl TypeAttributes {
         }
     }
 
+    // #[reflect(@expr)]
     fn parse_custom_attribute(&mut self, input: ParseStream) -> syn::Result<()> {
         self.custom_attributes.parse_inner_stream(input)
     }
 
-    fn parse_trait_type_path(&mut self, input: ParseStream) -> syn::Result<()> {
-        // #[reflect(TypePath = false)]
+    /// This function can be used when the `reflect_docs` feature is disabled.
+    /// When the feature is not enabled, it will not do anything.
+    fn parse_docs(&mut self, input: ParseStream) -> syn::Result<()> {
+        // #[reflect(docs = "...")]
         let pair = input.parse::<MetaNameValue>()?;
+        self.docs.parse_custom_docs(&pair)
+    }
 
-        if let Expr::Lit(ExprLit {
-            lit: Lit::Bool(lit), ..
-        }) = &pair.value {
-            if lit.value() {
-                return Err(syn::Error::new(lit.span(), "Should not be `true`, it's default value."));
-            }
-            self.trait_flags.impl_type_path = lit.value();
-        } else {
-            return Err(syn::Error::new(pair.value.span(), "Expected a bool value."));
-        }
-        
+    // #[reflect(default)]
+    fn parse_default(&mut self, input: ParseStream) -> syn::Result<()> {
+        input.parse::<kw::default>()?;
+        self.avail_traits.default = true;
         Ok(())
     }
 
-    fn parse_trait_typed(&mut self, input: ParseStream) -> syn::Result<()> {
-        // #[reflect(Typed = false)]
-        let pair = input.parse::<MetaNameValue>()?;
-
-        if let Expr::Lit(ExprLit {
-            lit: Lit::Bool(lit), ..
-        }) = &pair.value {
-            if lit.value() {
-                return Err(syn::Error::new(lit.span(), "Should not be `true`, it's default value."));
-            }
-            self.trait_flags.impl_typed = lit.value();
-        } else {
-            return Err(syn::Error::new(pair.value.span(), "Expected a bool value."));
-        }
-        
+    // #[reflect(clone)]
+    fn parse_clone(&mut self, input: ParseStream) -> syn::Result<()> {
+        input.parse::<kw::clone>()?;
+        self.avail_traits.clone = true;
         Ok(())
     }
 
-    fn parse_trait_reflect(&mut self, input: ParseStream) -> syn::Result<()> {
-        // #[reflect(Reflecct = false)]
-        let pair = input.parse::<MetaNameValue>()?;
-
-        if let Expr::Lit(ExprLit {
-            lit: Lit::Bool(lit), ..
-        }) = &pair.value {
-            if lit.value() {
-                return Err(syn::Error::new(lit.span(), "Should not be `true`, it's default value."));
-            }
-            self.trait_flags.impl_reflect = lit.value();
-        } else {
-            return Err(syn::Error::new(pair.value.span(), "Expected a bool value."));
-        }
-        
+    // #[reflect(hash)]
+    fn parse_hash(&mut self, input: ParseStream) -> syn::Result<()> {
+        input.parse::<kw::hash>()?;
+        self.avail_traits.hash = true;
         Ok(())
     }
 
-    fn parse_trait_get_type_traits(&mut self, input: ParseStream) -> syn::Result<()> {
-        // #[reflect(GetTypeTraits = false)]
-        let pair = input.parse::<MetaNameValue>()?;
-
-        if let Expr::Lit(ExprLit {
-            lit: Lit::Bool(lit), ..
-        }) = &pair.value {
-            if lit.value() {
-                return Err(syn::Error::new(lit.span(), "Should not be `true`, it's default value."));
-            }
-            self.trait_flags.impl_get_type_traits = lit.value();
-        } else {
-            return Err(syn::Error::new(pair.value.span(), "Expected a bool value."));
-        }
-        
+    // #[reflect(partial_eq)]
+    fn parse_patrial_eq(&mut self, input: ParseStream) -> syn::Result<()> {
+        input.parse::<kw::partial_eq>()?;
+        self.avail_traits.partial_eq = true;
         Ok(())
     }
 
-    fn parse_trait_from_reflect(&mut self, input: ParseStream) -> syn::Result<()> {
-        // #[reflect(FromReflect = false)]
-        let pair = input.parse::<MetaNameValue>()?;
-
-        if let Expr::Lit(ExprLit {
-            lit: Lit::Bool(lit), ..
-        }) = &pair.value {
-            if lit.value() {
-                return Err(syn::Error::new(lit.span(), "Should not be `true`, it's default value."));
-            }
-            self.trait_flags.impl_from_reflect = lit.value();
-        } else {
-            return Err(syn::Error::new(pair.value.span(), "Expected a bool value."));
-        }
-        
+    // #[reflect(debug)]
+    fn parse_debug(&mut self, input: ParseStream) -> syn::Result<()> {
+        input.parse::<kw::debug>()?;
+        self.avail_traits.debug = true;
         Ok(())
     }
 
-    fn parse_trait_struct(&mut self, input: ParseStream) -> syn::Result<()> {
-        // #[reflect(Struct = false)]
-        let pair = input.parse::<MetaNameValue>()?;
-
-        if let Expr::Lit(ExprLit {
-            lit: Lit::Bool(lit), ..
-        }) = &pair.value {
-            if lit.value() {
-                return Err(syn::Error::new(lit.span(), "Should not be `true`, it's default value."));
-            }
-            self.trait_flags.impl_struct = lit.value();
-        } else {
-            return Err(syn::Error::new(pair.value.span(), "Expected a bool value."));
-        }
-        
+    // #[reflect(serde)]
+    fn parse_serde(&mut self, input: ParseStream) -> syn::Result<()> {
+        input.parse::<kw::serde>()?;
+        self.avail_traits.serialize = true;
+        self.avail_traits.deserialize = true;
         Ok(())
     }
 
-    fn parse_trait_tuple_struct(&mut self, input: ParseStream) -> syn::Result<()> {
-        // #[reflect(TupleStruct = false)]
-        let pair = input.parse::<MetaNameValue>()?;
-
-        if let Expr::Lit(ExprLit {
-            lit: Lit::Bool(lit), ..
-        }) = &pair.value {
-            if lit.value() {
-                return Err(syn::Error::new(lit.span(), "Should not be `true`, it's default value."));
-            }
-            self.trait_flags.impl_tuple_struct = lit.value();
-        } else {
-            return Err(syn::Error::new(pair.value.span(), "Expected a bool value."));
-        }
-        
+    // #[reflect(serialize)]
+    fn parse_serialize(&mut self, input: ParseStream) -> syn::Result<()> {
+        input.parse::<kw::serialize>()?;
+        self.avail_traits.serialize = true;
         Ok(())
     }
 
-    fn parse_trait_tuple(&mut self, input: ParseStream) -> syn::Result<()> {
-        // #[reflect(Tuple = false)]
-        let pair = input.parse::<MetaNameValue>()?;
-
-        if let Expr::Lit(ExprLit {
-            lit: Lit::Bool(lit), ..
-        }) = &pair.value {
-            if lit.value() {
-                return Err(syn::Error::new(lit.span(), "Should not be `true`, it's default value."));
-            }
-            self.trait_flags.impl_tuple = lit.value();
-        } else {
-            return Err(syn::Error::new(pair.value.span(), "Expected a bool value."));
-        }
-        
-        
+    // #[reflect(deserialize)]
+    fn parse_deserialize(&mut self, input: ParseStream) -> syn::Result<()> {
+        input.parse::<kw::deserialize>()?;
+        self.avail_traits.deserialize = true;
         Ok(())
     }
 
-    fn parse_trait_enum(&mut self, input: ParseStream) -> syn::Result<()> {
-        // #[reflect(Enum = false)]
-        let pair = input.parse::<MetaNameValue>()?;
-
-        if let Expr::Lit(ExprLit {
-            lit: Lit::Bool(lit), ..
-        }) = &pair.value {
-            if lit.value() {
-                return Err(syn::Error::new(lit.span(), "Should not be `true`, it's default value."));
-            }
-            self.trait_flags.impl_enum = lit.value();
-        } else {
-            return Err(syn::Error::new(pair.value.span(), "Expected a bool value."));
-        }
-        
-        Ok(())
-    }
-
-    fn parse_reflect_clone(&mut self, input: ParseStream) -> syn::Result<()> {
-        // #[reflect(clone = func_path)]
-        let pair = input.parse::<MetaNameValue>()?;
-
-        if let Expr::Path(ExprPath{ path, .. }) = &pair.value {
-            self.method_flags.reflect_clone = MethodFlag::Custom(path.clone(), path.span());
-        } else {
-            return Err(syn::Error::new(pair.value.span(), "Epected a Path."));
-        }
-        
-        Ok(())
-    }
-
-    fn parse_reflect_debug(&mut self, input: ParseStream) -> syn::Result<()> {
-        // #[reflect(debug = Debug/Internal/func_path)]
-        let pair = input.parse::<MetaNameValue>()?;
-
-        if let Expr::Path(ExprPath{ path, .. }) = &pair.value {
-            if path.is_ident("Internal") {
-                return Err(syn::Error::new(path.span(), "`Internal` is default for `reflect_debug` and should not be explicitly declared."));
-            } else if path.is_ident("Debug") {
-                self.method_flags.reflect_debug = MethodFlag::Trait(path.span());
-            } else {
-                self.method_flags.reflect_debug = MethodFlag::Custom(path.clone(), path.span());
-            }
-        } else {
-            return Err(syn::Error::new(pair.value.span(), "Epected a Path."));
-        }
-        
-        Ok(())
-    }
-
-    fn parse_reflect_hash(&mut self, input: ParseStream) -> syn::Result<()> {
-        // #[reflect(hash = Hash/Internal/func_path)]
-        let pair = input.parse::<MetaNameValue>()?;
-
-        if let Expr::Path(ExprPath{ path, .. }) = &pair.value {
-            if path.is_ident("Internal") {
-                self.method_flags.reflect_hash = MethodFlag::Internal;
-            } else if path.is_ident("Hash") {
-                self.method_flags.reflect_hash = MethodFlag::Trait(path.span());
-            } else {
-                self.method_flags.reflect_hash = MethodFlag::Custom(path.clone(), path.span());
-            }
-        } else {
-            return Err(syn::Error::new(pair.value.span(), "Epected a Path."));
-        }
-        
-        Ok(())
-    }
-
-    fn parse_reflect_patrial_eq(&mut self, input: ParseStream) -> syn::Result<()> {
-        // #[reflect(partial_eq = PartialEq/Internal/func_path)]
-        let pair = input.parse::<MetaNameValue>()?;
-
-        if let Expr::Path(ExprPath{ path, .. }) = &pair.value {
-            if path.is_ident("Internal") {
-                self.method_flags.reflect_partial_eq = MethodFlag::Internal;
-            } else if path.is_ident("PartialEq") {
-                self.method_flags.reflect_partial_eq = MethodFlag::Trait(path.span());
-            } else {
-                self.method_flags.reflect_partial_eq = MethodFlag::Custom(path.clone(), path.span());
-            }
-        } else {
-            return Err(syn::Error::new(pair.value.span(), "Epected a Path."));
-        }
-        
-        Ok(())
-    }
-
+    // #[reflect(opaque)]
     fn parse_opaque(&mut self, input: ParseStream) -> syn::Result<()> {
         input.parse::<kw::opaque>()?;
         self.is_opaque = true;
         Ok(())
     }
 
+    // #[reflect(auto_register)]
     fn parse_auto_register(&mut self, input: ParseStream) -> syn::Result<()> {
         input.parse::<kw::auto_register>()?;
         self.auto_register = true;
         Ok(())
     }
 
+    // #[reflect(type_path = "...")]
     fn parse_type_path(&mut self, input: ParseStream) -> syn::Result<()> {
-        // #[reflect(type_path = "...")]
         let pair = input.parse::<MetaNameValue>()?;
 
         if let Expr::Lit(ExprLit {
@@ -417,13 +255,169 @@ impl TypeAttributes {
         Ok(())
     }
 
-    /// This function can be used when the `reflect_docs` feature is disabled.
-    /// When the feature is not enabled, it will not do anything.
-    fn parse_docs(&mut self, input: ParseStream) -> syn::Result<()> {
-        // #[reflect(docs = "...")]
+    fn parse_trait_type_path(&mut self, input: ParseStream) -> syn::Result<()> {
+        // #[reflect(TypePath = false)]
         let pair = input.parse::<MetaNameValue>()?;
-        self.docs.parse_custom_docs(&pair)
+
+        if let Expr::Lit(ExprLit {
+            lit: Lit::Bool(lit), ..
+        }) = &pair.value {
+            if lit.value() {
+                return Err(syn::Error::new(lit.span(), "Should not be `true`, it's default value."));
+            }
+            self.impl_switchs.impl_type_path = lit.value();
+        } else {
+            return Err(syn::Error::new(pair.value.span(), "Expected a bool value."));
+        }
+        
+        Ok(())
     }
+
+    fn parse_trait_typed(&mut self, input: ParseStream) -> syn::Result<()> {
+        // #[reflect(Typed = false)]
+        let pair = input.parse::<MetaNameValue>()?;
+
+        if let Expr::Lit(ExprLit {
+            lit: Lit::Bool(lit), ..
+        }) = &pair.value {
+            if lit.value() {
+                return Err(syn::Error::new(lit.span(), "Should not be `true`, it's default value."));
+            }
+            self.impl_switchs.impl_typed = lit.value();
+        } else {
+            return Err(syn::Error::new(pair.value.span(), "Expected a bool value."));
+        }
+        
+        Ok(())
+    }
+
+    fn parse_trait_reflect(&mut self, input: ParseStream) -> syn::Result<()> {
+        // #[reflect(Reflecct = false)]
+        let pair = input.parse::<MetaNameValue>()?;
+
+        if let Expr::Lit(ExprLit {
+            lit: Lit::Bool(lit), ..
+        }) = &pair.value {
+            if lit.value() {
+                return Err(syn::Error::new(lit.span(), "Should not be `true`, it's default value."));
+            }
+            self.impl_switchs.impl_reflect = lit.value();
+        } else {
+            return Err(syn::Error::new(pair.value.span(), "Expected a bool value."));
+        }
+        
+        Ok(())
+    }
+
+    fn parse_trait_get_type_traits(&mut self, input: ParseStream) -> syn::Result<()> {
+        // #[reflect(GetTypeTraits = false)]
+        let pair = input.parse::<MetaNameValue>()?;
+
+        if let Expr::Lit(ExprLit {
+            lit: Lit::Bool(lit), ..
+        }) = &pair.value {
+            if lit.value() {
+                return Err(syn::Error::new(lit.span(), "Should not be `true`, it's default value."));
+            }
+            self.impl_switchs.impl_get_type_traits = lit.value();
+        } else {
+            return Err(syn::Error::new(pair.value.span(), "Expected a bool value."));
+        }
+        
+        Ok(())
+    }
+
+    fn parse_trait_from_reflect(&mut self, input: ParseStream) -> syn::Result<()> {
+        // #[reflect(FromReflect = false)]
+        let pair = input.parse::<MetaNameValue>()?;
+
+        if let Expr::Lit(ExprLit {
+            lit: Lit::Bool(lit), ..
+        }) = &pair.value {
+            if lit.value() {
+                return Err(syn::Error::new(lit.span(), "Should not be `true`, it's default value."));
+            }
+            self.impl_switchs.impl_from_reflect = lit.value();
+        } else {
+            return Err(syn::Error::new(pair.value.span(), "Expected a bool value."));
+        }
+        
+        Ok(())
+    }
+
+    fn parse_trait_struct(&mut self, input: ParseStream) -> syn::Result<()> {
+        // #[reflect(Struct = false)]
+        let pair = input.parse::<MetaNameValue>()?;
+
+        if let Expr::Lit(ExprLit {
+            lit: Lit::Bool(lit), ..
+        }) = &pair.value {
+            if lit.value() {
+                return Err(syn::Error::new(lit.span(), "Should not be `true`, it's default value."));
+            }
+            self.impl_switchs.impl_struct = lit.value();
+        } else {
+            return Err(syn::Error::new(pair.value.span(), "Expected a bool value."));
+        }
+        
+        Ok(())
+    }
+
+    fn parse_trait_tuple_struct(&mut self, input: ParseStream) -> syn::Result<()> {
+        // #[reflect(TupleStruct = false)]
+        let pair = input.parse::<MetaNameValue>()?;
+
+        if let Expr::Lit(ExprLit {
+            lit: Lit::Bool(lit), ..
+        }) = &pair.value {
+            if lit.value() {
+                return Err(syn::Error::new(lit.span(), "Should not be `true`, it's default value."));
+            }
+            self.impl_switchs.impl_tuple_struct = lit.value();
+        } else {
+            return Err(syn::Error::new(pair.value.span(), "Expected a bool value."));
+        }
+        
+        Ok(())
+    }
+
+    fn parse_trait_tuple(&mut self, input: ParseStream) -> syn::Result<()> {
+        // #[reflect(Tuple = false)]
+        let pair = input.parse::<MetaNameValue>()?;
+
+        if let Expr::Lit(ExprLit {
+            lit: Lit::Bool(lit), ..
+        }) = &pair.value {
+            if lit.value() {
+                return Err(syn::Error::new(lit.span(), "Should not be `true`, it's default value."));
+            }
+            self.impl_switchs.impl_tuple = lit.value();
+        } else {
+            return Err(syn::Error::new(pair.value.span(), "Expected a bool value."));
+        }
+        
+        
+        Ok(())
+    }
+
+    fn parse_trait_enum(&mut self, input: ParseStream) -> syn::Result<()> {
+        // #[reflect(Enum = false)]
+        let pair = input.parse::<MetaNameValue>()?;
+
+        if let Expr::Lit(ExprLit {
+            lit: Lit::Bool(lit), ..
+        }) = &pair.value {
+            if lit.value() {
+                return Err(syn::Error::new(lit.span(), "Should not be `true`, it's default value."));
+            }
+            self.impl_switchs.impl_enum = lit.value();
+        } else {
+            return Err(syn::Error::new(pair.value.span(), "Expected a bool value."));
+        }
+        
+        Ok(())
+    }
+
 
 }
 

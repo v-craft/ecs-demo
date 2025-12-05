@@ -28,7 +28,6 @@ use crate::{
 ///
 /// [`reflect_kind`]: crate::Reflect::reflect_kind
 /// [`reflect_ref`]: crate::Reflect::reflect_ref
-#[derive(Default)]
 pub struct DynamicEnum {
     enum_info: Option<&'static TypeInfo>,
     variant_index: usize,
@@ -48,8 +47,8 @@ impl TypePath for DynamicEnum {
     }
 
     #[inline]
-    fn type_ident() -> Option<&'static str> {
-        Some("DynamicEnum")
+    fn type_ident() -> &'static str {
+        "DynamicEnum"
     }
 
     #[inline]
@@ -182,7 +181,7 @@ impl DynamicEnum {
                 DynamicVariant::Unit,
             ),
             VariantKind::Tuple => {
-                let mut data = DynamicTuple::default();
+                let mut data = DynamicTuple::new();
                 for field in value.iter_fields() {
                     data.insert_boxed(field.value().to_dynamic());
                 }
@@ -193,7 +192,7 @@ impl DynamicEnum {
                 )
             }
             VariantKind::Struct => {
-                let mut data = DynamicStruct::default();
+                let mut data = DynamicStruct::new();
                 for field in value.iter_fields() {
                     let name = field.name().unwrap();
                     data.insert_boxed(name.to_owned(), field.value().to_dynamic());
@@ -269,14 +268,14 @@ impl Reflect for DynamicEnum {
             let dyn_variant = match y.variant_kind() {
                 VariantKind::Unit => DynamicVariant::Unit,
                 VariantKind::Tuple => {
-                    let mut dyn_tuple = DynamicTuple::default();
+                    let mut dyn_tuple = DynamicTuple::new();
                     for y_field in y.iter_fields() {
                         dyn_tuple.insert_boxed(y_field.value().to_dynamic());
                     }
                     DynamicVariant::Tuple(dyn_tuple)
                 }
                 VariantKind::Struct => {
-                    let mut dyn_struct = DynamicStruct::default();
+                    let mut dyn_struct = DynamicStruct::new();
                     for y_field in y.iter_fields() {
                         dyn_struct.insert_boxed(
                             y_field.name().unwrap().to_owned(),

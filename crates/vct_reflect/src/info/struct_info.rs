@@ -13,7 +13,7 @@ use crate::{
     ops::Struct,
 };
 
-/// Container for storing compile-time struct information (including unit struct)
+/// Container for storing compile-time struct information.
 #[derive(Clone, Debug)]
 pub struct StructInfo {
     ty: Type,
@@ -21,6 +21,7 @@ pub struct StructInfo {
     fields: Box<[NamedField]>,
     field_names: Box<[&'static str]>,
     field_indices: HashMap<&'static str, usize>,
+    // Use `Option` to reduce unnecessary heap requests (when empty content).
     custom_attributes: Option<Arc<CustomAttributes>>,
     #[cfg(feature = "reflect_docs")]
     docs: Option<&'static str>,
@@ -33,9 +34,9 @@ impl StructInfo {
     impl_custom_attributes_fn!(custom_attributes);
     impl_with_custom_attributes!(custom_attributes);
 
-    /// Create a new container
+    /// Creates a new [`StructInfo`].
     ///
-    /// The order of fields inside the container is fixed
+    /// The order of fields inside the container is fixed.
     pub fn new<T: Struct + TypePath>(fields: &[NamedField]) -> Self {
         let field_indices = fields
             .iter()
@@ -57,13 +58,13 @@ impl StructInfo {
         }
     }
 
-    /// Get the list of field names
+    /// Returns the list of field names.
     #[inline]
     pub fn field_names(&self) -> &[&'static str] {
         &self.field_names
     }
 
-    /// Get [`NamedField`] by field name
+    /// Returns the [`NamedField`] by name, if it exists.
     #[inline]
     pub fn field(&self, name: &str) -> Option<&NamedField> {
         self.field_indices
@@ -71,25 +72,25 @@ impl StructInfo {
             .map(|index| &self.fields[*index])
     }
 
-    /// Get [`NamedField`] by field index
+    /// Returns the [`NamedField`] by index, if it exists.
     #[inline]
     pub fn field_at(&self, index: usize) -> Option<&NamedField> {
         self.fields.get(index)
     }
 
-    /// Get the index of field by name
+    /// Returns the index for the given field name, if it exists.
     #[inline]
     pub fn index_of(&self, name: &str) -> Option<usize> {
         self.field_indices.get(name).copied()
     }
 
-    /// Get the iter of [`NamedField`]
+    /// Returns an iterator over the fields.
     #[inline]
     pub fn iter(&self) -> core::slice::Iter<'_, NamedField> {
         self.fields.iter()
     }
 
-    /// Get the number of fields
+    /// Returns the number of fields.
     #[inline]
     pub fn field_len(&self) -> usize {
         self.fields.len()

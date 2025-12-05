@@ -30,14 +30,14 @@ impl<'de, P: DeserializerProcessor> Visitor<'de> for SetVisitor<'_, P> {
     where
         V: SeqAccess<'de>,
     {
-        let mut dynamic_set = DynamicSet::new();
-
         let value_ty = self.set_info.value_ty();
         let Some(type_traits) = self.registry.get(value_ty.id()) else {
             return Err(Error::custom(format!(
                 "no type_traits found for type `{value_ty:?}`"
             )));
         };
+
+        let mut dynamic_set = DynamicSet::with_capacity(set.size_hint().unwrap_or_default());
 
         while let Some(value) = set.next_element_seed(InternalDeserializer::new_internal(
             type_traits,

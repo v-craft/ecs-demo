@@ -16,7 +16,6 @@ use vct_utils::collections::{HashTable, hash_table};
 ///
 /// [`reflect_kind`]: crate::Reflect::reflect_kind
 /// [`reflect_ref`]: crate::Reflect::reflect_ref
-#[derive(Default)]
 pub struct DynamicMap {
     map_info: Option<&'static TypeInfo>,
     hash_table: HashTable<(Box<dyn Reflect>, Box<dyn Reflect>)>,
@@ -32,8 +31,8 @@ impl TypePath for DynamicMap {
         "DynamicMap"
     }
     #[inline]
-    fn type_ident() -> Option<&'static str> {
-        Some("DynamicMap")
+    fn type_ident() -> &'static str {
+        "DynamicMap"
     }
     #[inline]
     fn crate_name() -> Option<&'static str> {
@@ -53,11 +52,21 @@ impl Typed for DynamicMap {
 }
 
 impl DynamicMap {
+    /// Create a empty [`DynamicMap`].
     #[inline]
-    pub const fn new() -> DynamicMap {
+    pub const fn new() -> Self {
         Self {
             map_info: None,
             hash_table: HashTable::new(),
+        }
+    }
+
+    /// See [`Vec::with_capacity`]
+    #[inline]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            map_info: None,
+            hash_table: HashTable::with_capacity(capacity),
         }
     }
 
@@ -260,7 +269,7 @@ pub trait Map: Reflect {
 
     /// Creates a new [`DynamicMap`] from this map.
     fn to_dynamic_map(&self) -> DynamicMap {
-        let mut map = DynamicMap::default();
+        let mut map = DynamicMap::new();
         map.set_type_info(self.represented_type_info());
         for (key, value) in self.iter() {
             map.insert_boxed(key.to_dynamic(), value.to_dynamic());

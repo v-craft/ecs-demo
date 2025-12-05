@@ -64,7 +64,7 @@ impl<'a> EnumVariant<'a> {
         let args = match &self.fields {
             EnumVariantFields::Unit => quote!(#variant_name),
             _ => {
-                quote!( #variant_name , &[#(#fields),*] )
+                quote!( #variant_name , &[ #(#fields),* ] )
             }
         };
 

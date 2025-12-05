@@ -10,17 +10,23 @@ pub(crate) use impl_trait_reflect::impl_trait_reflect;
 mod impl_trait_get_type_traits;
 pub(crate) use impl_trait_get_type_traits::impl_trait_get_type_traits;
 
-mod impl_trait_struct;
-pub(crate) use impl_trait_struct::impl_trait_struct;
+mod impl_trait_from_reflect;
+pub(crate) use impl_trait_from_reflect::impl_struct_from_reflect;
 
-mod impl_trait_tuple_struct;
-pub(crate) use impl_trait_tuple_struct::impl_trait_tuple_struct;
+mod impl_struct;
+pub(crate) use impl_struct::impl_struct;
 
-mod impl_trait_enum;
-pub(crate) use impl_trait_enum::impl_trait_enum;
+mod impl_tuple_struct;
+pub(crate) use impl_tuple_struct::impl_tuple_struct;
+
+mod impl_enum;
+pub(crate) use impl_enum::impl_enum;
 
 mod impl_opaque;
 pub(crate) use impl_opaque::impl_opaque;
+
+mod impl_unit;
+pub(crate) use impl_unit::impl_unit;
 
 mod match_reflect_impls;
 pub(crate) use match_reflect_impls::match_reflect_impls;

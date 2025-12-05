@@ -11,7 +11,7 @@ use crate::{
     },
 };
 
-/// Container for storing compile-time type information
+/// Container for storing compile-time type information.
 ///
 /// 'Opaque' refers to the inability to see the internal implementation,
 /// such as u64, String, and other types.
@@ -19,6 +19,7 @@ use crate::{
 pub struct OpaqueInfo {
     ty: Type,
     generics: Generics,
+    // Use `Option` to reduce unnecessary heap requests (when empty content).
     custom_attributes: Option<Arc<CustomAttributes>>,
     #[cfg(feature = "reflect_docs")]
     docs: Option<&'static str>,
@@ -31,7 +32,7 @@ impl OpaqueInfo {
     impl_custom_attributes_fn!(custom_attributes);
     impl_with_custom_attributes!(custom_attributes);
 
-    // Create a new container
+    /// Creates a new [`OpaqueInfo`].
     #[inline]
     pub fn new<T: Reflect + TypePath + ?Sized>() -> Self {
         Self {

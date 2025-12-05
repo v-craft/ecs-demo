@@ -1,9 +1,9 @@
-// Single layer path access interface.
-// Fixed interface, no need to implement.
+// Single-layer path access interface.
+// Fixed interface; no need to implement.
 mod accessor;
 pub use accessor::{AccessError, AccessErrorKind, Accessor, OffsetAccessor};
 
-// An abstract "Path" interface that allows users to customize "Path" that can be parsed.
+// Abstract path interface that lets users customize parsable paths.
 mod path;
 pub use path::{AccessPath, ParseError};
 

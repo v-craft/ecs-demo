@@ -34,7 +34,6 @@ impl<'de, P: DeserializerProcessor> Visitor<'de> for EnumVisitor<'_, P> {
     where
         A: EnumAccess<'de>,
     {
-        let mut dynamic_enum = DynamicEnum::default();
         let (variant_info, variant) = data.variant_seed(VariantDeserializer {
             enum_info: self.enum_info,
         })?;
@@ -64,7 +63,7 @@ impl<'de, P: DeserializerProcessor> Visitor<'de> for EnumVisitor<'_, P> {
                     self.registry,
                     self.processor,
                 ))?;
-                let mut dynamic_tuple = DynamicTuple::default();
+                let mut dynamic_tuple = DynamicTuple::with_capacity(1);
                 dynamic_tuple.insert_boxed(value);
                 dynamic_tuple.into()
             }
@@ -84,7 +83,9 @@ impl<'de, P: DeserializerProcessor> Visitor<'de> for EnumVisitor<'_, P> {
             .enum_info
             .index_of(variant_name)
             .expect("variant should exist");
-        dynamic_enum.set_variant_with_index(variant_index, variant_name, value);
+
+        let dynamic_enum = DynamicEnum::new_with_index(variant_index, variant_name, value);
+
         Ok(dynamic_enum)
     }
 }

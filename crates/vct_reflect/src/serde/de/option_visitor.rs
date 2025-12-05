@@ -29,8 +29,7 @@ impl<'de, P: DeserializerProcessor> Visitor<'de> for OptionVisitor<'_, P> {
     where
         E: Error,
     {
-        let mut option = DynamicEnum::default();
-        option.set_variant("None", ());
+        let option = DynamicEnum::new("None", ());
         Ok(option)
     }
 
@@ -64,10 +63,12 @@ impl<'de, P: DeserializerProcessor> Visitor<'de> for OptionVisitor<'_, P> {
 
                 let de =
                     InternalDeserializer::new_internal(type_traits, self.registry, self.processor);
-                let mut value = DynamicTuple::new();
+
+                let mut value = DynamicTuple::with_capacity(1);
+
                 value.insert_boxed(de.deserialize(deserializer)?);
-                let mut option = DynamicEnum::default();
-                option.set_variant("Some", value);
+
+                let option = DynamicEnum::new("Some", value);
                 Ok(option)
             }
             info => Err(Error::custom(format!(

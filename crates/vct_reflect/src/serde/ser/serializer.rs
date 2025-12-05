@@ -77,10 +77,8 @@ impl<'a, P: SerializerProcessor> Serialize for InternalSerializer<'a, P> {
         };
 
         // Try to get the Serializ impl of the type itself
-        if let Some(type_traits) = self.registry.get(self.value.type_id())
-            && let Some(processor) = type_traits.get::<TypeTraitSerialize>()
-        {
-            return processor.serialize(self.value, serializer);
+        if let Some(p) = self.registry.get_type_trait::<TypeTraitSerialize>(self.value.type_id()) {
+            return p.serialize(self.value, serializer);
         }
 
         match self.value.reflect_ref() {

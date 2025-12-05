@@ -7,7 +7,7 @@ pub(crate) use reflect_docs::ReflectDocs;
 
 mod flags;
 pub(crate) use flags::{
-    MethodFlag, MethodImplFlags, TraitImplFlags,
+    TraitImplSwitches, TraitAvailableFlags,
 };
 
 mod type_attributes;

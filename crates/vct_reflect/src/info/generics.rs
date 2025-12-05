@@ -1,13 +1,12 @@
 use alloc::{borrow::Cow, boxed::Box};
 use core::ops::Deref;
-use vct_os::sync::Arc;
 
 use crate::{
     Reflect,
-    info::{Type, TypePath, type_struct::impl_type_fn},
+    info::{ConstParamData, Type, TypePath, type_struct::impl_type_fn},
 };
 
-/// Container for storing generic type parameter information
+/// Container for storing generic type parameter information.
 #[derive(Clone, Debug)]
 pub struct TypeParamInfo {
     ty: Type,
@@ -18,7 +17,7 @@ pub struct TypeParamInfo {
 impl TypeParamInfo {
     impl_type_fn!(ty);
 
-    /// Create a new container
+    /// Creates a new [`TypeParamInfo`].
     #[inline]
     pub fn new<T: TypePath + ?Sized>(name: impl Into<Cow<'static, str>>) -> Self {
         Self {
@@ -28,19 +27,19 @@ impl TypeParamInfo {
         }
     }
 
-    /// Get generic parameter name
+    /// Returns the generic parameter name.
     #[inline]
     pub fn name(&self) -> &Cow<'static, str> {
         &self.name
     }
 
-    /// Get default type
+    /// Returns the default type, if any.
     #[inline]
     pub fn default(&self) -> Option<&Type> {
         self.default.as_ref()
     }
 
-    /// Modify default type
+    /// Sets the default type.
     #[inline]
     pub fn with_default<T: TypePath + ?Sized>(mut self) -> Self {
         self.default = Some(Type::of::<T>());
@@ -48,21 +47,21 @@ impl TypeParamInfo {
     }
 }
 
-/// Container for storing generic const parameter information
+
+/// Container for storing generic const parameter information.
 #[derive(Clone, Debug)]
 pub struct ConstParamInfo {
     ty: Type,
     name: Cow<'static, str>,
-    // Use `Arc<>` to support `Clone` trait
-    default: Option<Arc<dyn Reflect>>,
+    default: Option<ConstParamData>,
 }
 
 impl ConstParamInfo {
     impl_type_fn!(ty);
 
-    /// Create a new container
+    /// Creates a new [`ConstParamInfo`].
     #[inline]
-    pub fn new<T: TypePath + ?Sized>(name: impl Into<Cow<'static, str>>) -> Self {
+    pub fn new<T: TypePath + Into<ConstParamData>>(name: impl Into<Cow<'static, str>>) -> Self {
         Self {
             ty: Type::of::<T>(),
             name: name.into(),
@@ -70,37 +69,33 @@ impl ConstParamInfo {
         }
     }
 
-    /// Get generic parameter name
+    /// Returns the generic parameter name.
     #[inline]
     pub fn name(&self) -> &Cow<'static, str> {
         &self.name
     }
 
-    /// Get default const value
+    /// Returns the default const value, if any.
     #[inline]
-    pub fn default(&self) -> Option<&dyn Reflect> {
-        self.default.as_deref()
+    pub fn default(&self) -> Option<ConstParamData> {
+        self.default
     }
 
-    /// Modify default type
-    pub fn with_default<T: Reflect + 'static>(mut self, default: T) -> Self {
-        let arc = Arc::new(default);
-
-        #[cfg(not(feature = "std"))]
-        #[expect(
-            unsafe_code,
-            reason = "unsized coercion is unstable without using std Arc"
-        )]
-        // See: https://doc.rust-lang.org/alloc/sync/struct.Arc.html -- impl CoerceUnsized for Arc
-        // TODO: Remove this after CoerceUnsized stabilization.
-        let arc = unsafe { Arc::from_raw(Arc::into_raw(arc) as *const dyn Reflect) };
-
-        self.default = Some(arc);
+    /// Sets the default const value.
+    /// 
+    /// # Panic
+    /// - incorrect type
+    pub fn with_default<T: Reflect + Into<ConstParamData>>(mut self, default: T) -> Self {
+        #[cfg(debug_assertions)]
+        if !self.is::<T>() {
+            panic!("The default value type in the const generic parameter is incorrect.");
+        }
+        self.default = Some(default.into());
         self
     }
 }
 
-/// A Enum representing a single generic parameter
+/// An enum representing a single generic parameter.
 #[derive(Clone, Debug)]
 pub enum GenericInfo {
     Type(TypeParamInfo),
@@ -127,7 +122,7 @@ impl GenericInfo {
         Self::Const(info) => info.ty(),
     });
 
-    /// Get param name
+    /// Returns the parameter name.
     #[inline]
     pub fn name(&self) -> &Cow<'static, str> {
         match self {
@@ -136,7 +131,7 @@ impl GenericInfo {
         }
     }
 
-    /// Check if self is const parameter
+    /// Returns `true` if this is a const parameter.
     #[inline]
     pub fn is_const(&self) -> bool {
         match self {
@@ -146,18 +141,18 @@ impl GenericInfo {
     }
 }
 
-/// Container for storing a list of generic type parameters
+/// Container for storing a list of generic parameters.
 #[derive(Clone, Default, Debug)]
 pub struct Generics(Box<[GenericInfo]>);
 
 impl Generics {
-    /// Create a new empty container
+    /// Creates a new empty container.
     #[inline]
     pub fn new() -> Self {
         Self(Box::new([]))
     }
 
-    /// Get GenericInfo by parameter name
+    /// Returns the `GenericInfo` for the given parameter name, if any.
     ///
     /// Complexity: O(N)
     #[inline]
@@ -165,7 +160,7 @@ impl Generics {
         self.0.iter().find(|info| info.name() == name)
     }
 
-    /// Push back new paramter
+    /// Appends a parameter.
     ///
     /// Complexity: O(N)
     #[inline]

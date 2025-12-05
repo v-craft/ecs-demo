@@ -5,7 +5,7 @@ use serde::de::{DeserializeSeed, Error, SeqAccess, Visitor};
 use crate::{
     info::TupleStructInfo,
     ops::DynamicTupleStruct,
-    registry::{TypeRegistry, TypeTraitDefault},
+    registry::TypeRegistry,
     serde::SkipSerde,
 };
 
@@ -44,8 +44,6 @@ impl<'de, P: DeserializerProcessor> Visitor<'de> for TupleStructVisitor<'_, P> {
     where
         D: serde::Deserializer<'de>,
     {
-        let mut dynamic_tuple = DynamicTupleStruct::new();
-
         let field_info = self
             .tuple_struct_info
             .field_at(0)
@@ -58,34 +56,20 @@ impl<'de, P: DeserializerProcessor> Visitor<'de> for TupleStructVisitor<'_, P> {
             )));
         };
 
+        let mut dynamic_tuple = DynamicTupleStruct::with_capacity(1);
+
         // skip serde fields
         if let Some(skip_serde) = field_info.get_attribute::<SkipSerde>() {
-            if let Some(default_value) = &skip_serde.0 {
-                if default_value.type_id() != field_info.type_id() {
-                    return Err(Error::custom(format!(
-                        "The type of the default value (`{}`) in the custom attribute does not match the actual type `{}`.",
-                        default_value.reflect_type_path(),
-                        field_info.type_path(),
-                    )));
-                }
-                if let Ok(val) = default_value.reflect_clone() {
+            match skip_serde.get(field_info.type_id(), self.registry)? {
+                Some(val) => {
                     dynamic_tuple.insert_boxed(val);
-                } else {
-                    return Err(Error::custom(format!(
-                        "The type of the default value (`{}`) in the custom attribute does not support `reflect_clone`.",
-                        field_info.type_path(),
-                    )));
-                }
-            } else {
-                if let Some(default_value) = type_traits.get::<TypeTraitDefault>() {
-                    dynamic_tuple.insert_boxed(default_value.default());
-                } else {
-                    return Err(Error::custom(
-                        "Field `0` skipped serde, but no default value and not support `TypeTraitDefault`.",
-                    ));
-                }
+                    return Ok(dynamic_tuple);
+                },
+                None => {
+                    // Normally, newtype should not ignore internal fields by `SkipSerde::None`.
+                    return Ok(DynamicTupleStruct::new());
+                },
             }
-            return Ok(dynamic_tuple);
         }
 
         let de = InternalDeserializer::new_internal(type_traits, self.registry, self.processor);

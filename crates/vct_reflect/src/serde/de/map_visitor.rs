@@ -30,8 +30,6 @@ impl<'de, P: DeserializerProcessor> Visitor<'de> for MapVisitor<'_, P> {
     where
         V: MapAccess<'de>,
     {
-        let mut dynamic_map = DynamicMap::new();
-
         let key_ty = self.map_info.key_ty();
         let Some(key_traits) = self.registry.get(key_ty.id()) else {
             return Err(Error::custom(format!(
@@ -45,6 +43,8 @@ impl<'de, P: DeserializerProcessor> Visitor<'de> for MapVisitor<'_, P> {
                 "no type_traits found for type `{value_ty:?}`"
             )));
         };
+
+        let mut dynamic_map = DynamicMap::with_capacity(map.size_hint().unwrap_or_default());
 
         while let Some(key) = map.next_key_seed(InternalDeserializer::new_internal(
             key_traits,

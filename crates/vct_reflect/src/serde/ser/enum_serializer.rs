@@ -41,8 +41,7 @@ impl<P: SerializerProcessor> Serialize for EnumSerializer<'_, P> {
 
         let enum_name = enum_info
             .type_path_table()
-            .ident()
-            .unwrap_or(crate::serde::NO_IDENT);
+            .ident();
         let variant_index = self.enum_value.variant_index() as u32;
         let variant_info = enum_info
             .variant_at(variant_index as usize)
@@ -56,7 +55,7 @@ impl<P: SerializerProcessor> Serialize for EnumSerializer<'_, P> {
         match variant_kind {
             VariantKind::Unit => {
                 if type_info.type_path_table().module_path() == Some("core::option")
-                    && type_info.type_path_table().ident() == Some("Option")
+                    && type_info.type_path_table().ident() == "Option"
                 {
                     serializer.serialize_none()
                 } else {
@@ -100,7 +99,7 @@ impl<P: SerializerProcessor> Serialize for EnumSerializer<'_, P> {
                 let field = self.enum_value.field_at(0).unwrap();
 
                 if type_info.type_path_table().module_path() == Some("core::option")
-                    && type_info.type_path_table().ident() == Some("Option")
+                    && type_info.type_path_table().ident() == "Option"
                 {
                     serializer.serialize_some(&InternalSerializer::new_internal(
                         field,

@@ -1,8 +1,8 @@
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 
-// /// Full Path (FP) for [`core::any::Any`]
-// pub(crate) struct AnyFP;
+/// Full Path (FP) for [`core::any::Any`]
+pub(crate) struct AnyFP;
 /// Full Path (FP) for [`Clone`]
 pub(crate) struct CloneFP;
 /// Full Path (FP) for [`Default`]
@@ -23,12 +23,14 @@ pub(crate) struct HashFP;
 pub(crate) struct HasherFP;
 /// Full Path (FP) for [`Debug`](core::fmt::Debug)
 pub(crate) struct DebugFP;
+/// Full Path (FP) for [`Debug`](core::any::TypeId)
+pub(crate) struct TypeIdFP;
 
-// impl ToTokens for AnyFP {
-//     fn to_tokens(&self, tokens: &mut TokenStream) {
-//         quote!(::core::any::Any).to_tokens(tokens);
-//     }
-// }
+impl ToTokens for AnyFP {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        quote!(::core::any::Any).to_tokens(tokens);
+    }
+}
 
 impl ToTokens for CloneFP {
     fn to_tokens(&self, tokens: &mut TokenStream) {
@@ -87,5 +89,11 @@ impl ToTokens for HasherFP {
 impl ToTokens for DebugFP {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         quote!(::core::fmt::Debug).to_tokens(tokens);
+    }
+}
+
+impl ToTokens for TypeIdFP {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        quote!(::core::any::TypeId).to_tokens(tokens);
     }
 }

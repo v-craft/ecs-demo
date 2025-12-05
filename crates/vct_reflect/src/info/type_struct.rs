@@ -8,7 +8,7 @@ use crate::info::{TypePath, TypePathTable};
 
 /// The base representation of a Rust type.
 ///
-/// Including [`TypeId`] and [`TypePathTable`] .
+/// Includes a [`TypeId`] and a [`TypePathTable`].
 #[derive(Copy, Clone)]
 pub struct Type {
     type_path_table: TypePathTable,
@@ -16,7 +16,7 @@ pub struct Type {
 }
 
 impl Type {
-    /// Create a new [`Type`] from a type that implements [`TypePath`].
+    /// Creates a new [`Type`] from a type that implements [`TypePath`].
     #[inline]
     pub fn of<T: TypePath + ?Sized>() -> Self {
         Self {
@@ -31,37 +31,37 @@ impl Type {
         self.type_id
     }
 
-    /// See [`TypePath::type_path`]
+    /// See [`TypePath::type_path`].
     #[inline]
     pub fn path(&self) -> &'static str {
         self.type_path_table.path()
     }
 
-    /// See [`TypePath::type_name`]
+    /// See [`TypePath::type_name`].
     #[inline]
     pub fn name(&self) -> &'static str {
         self.type_path_table.name()
     }
 
-    /// See [`TypePath::type_ident`]
+    /// See [`TypePath::type_ident`].
     #[inline]
-    pub fn ident(&self) -> Option<&'static str> {
+    pub fn ident(&self) -> &'static str {
         self.type_path_table.ident()
     }
 
-    /// See [`TypePath::crate_name`]
+    /// See [`TypePath::crate_name`].
     #[inline]
     pub fn crate_name(&self) -> Option<&'static str> {
         self.type_path_table.crate_name()
     }
 
-    /// See [`TypePath::module_path`]
+    /// See [`TypePath::module_path`].
     #[inline]
     pub fn module_path(&self) -> Option<&'static str> {
         self.type_path_table.module_path()
     }
 
-    /// See [`TypePathTable`]
+    /// Returns the [`TypePathTable`].
     #[inline]
     pub fn type_path_table(&self) -> &TypePathTable {
         &self.type_path_table
@@ -110,25 +110,25 @@ macro_rules! impl_type_fn {
         $crate::info::type_struct::impl_type_fn!(self => &self.$field);
     };
     ($self:ident => $expr:expr) => {
-        /// Get underlying [`Type`].
+        /// Returns the underlying [`Type`].
         #[inline]
         pub fn ty($self: &Self) -> &$crate::info::Type {
             $expr
         }
 
-        /// Get [`TypeId`]
+        /// Returns the [`TypeId`].
         #[inline]
         pub fn type_id(&self) -> ::core::any::TypeId {
             self.ty().id()
         }
 
-        /// Get type_path
+        /// Returns the type path.
         #[inline]
         pub fn type_path(&self) -> &'static str {
             self.ty().path()
         }
 
-        /// Get [`TypePathTable`]
+        /// Returns the [`TypePathTable`].
         #[inline]
         pub fn type_path_table(&self) -> &$crate::info::TypePathTable {
             &self.ty().type_path_table()

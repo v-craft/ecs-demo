@@ -12,14 +12,13 @@ use core::{
     hash::{Hash, Hasher},
 };
 
-/// Representing [`List`], used to dynamically modify the type of data and information.
+/// Represents a [`List`], used to dynamically modify data and its reflected type information.
 ///
-/// Dynamic types are special in that their TypeInfo is [`OpaqueInfo`],
-/// but other APIs are consistent with the type they represent, such as [`reflect_kind`], [`reflect_ref`]
+/// Dynamic types are special in that their `TypeInfo` is [`OpaqueInfo`],
+/// but other APIs behave like the represented type, such as [`reflect_kind`] and [`reflect_ref`].
 ///
 /// [`reflect_kind`]: crate::Reflect::reflect_kind
 /// [`reflect_ref`]: crate::Reflect::reflect_ref
-#[derive(Default)]
 pub struct DynamicList {
     list_info: Option<&'static TypeInfo>,
     values: Vec<Box<dyn Reflect>>,
@@ -37,8 +36,8 @@ impl TypePath for DynamicList {
     }
 
     #[inline]
-    fn type_ident() -> Option<&'static str> {
-        Some("DynamicList")
+    fn type_ident() -> &'static str {
+        "DynamicList"
     }
 
     #[inline]
@@ -60,6 +59,7 @@ impl Typed for DynamicList {
 }
 
 impl DynamicList {
+    /// Create a empty [`DynamicList`].
     #[inline]
     pub const fn new() -> Self {
         Self {

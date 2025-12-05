@@ -9,9 +9,8 @@ use crate::{
 
 /// A **singular** element access within a path.
 ///
-/// Provide for [`Struct`], [`TupleStruct`], [`Tuple`], [`Array`], [`List`], [`Enum`].
-///
-/// [`Map`], [`Set`] and `Opaque` are not supported.
+/// Supported for [`Struct`], [`TupleStruct`], [`Tuple`], [`Array`], [`List`], [`Enum`].
+/// [`Map`], [`Set`], and `Opaque` are not supported.
 ///
 /// [`Struct`]: crate::ops::Struct
 /// [`TupleStruct`]: crate::ops::TupleStruct
@@ -23,23 +22,23 @@ use crate::{
 /// [`Enum`]: crate::ops::Enum
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Accessor<'a> {
-    /// A name-based field access on a struct or Enum's struct.
+    /// A name-based field access on a struct or enum struct.
     ///
-    /// Example:  the `id` of `.id` (Default impl)
+    /// Example: the `id` of `.id` (default impl)
     FieldName(Cow<'a, str>),
-    /// A index-based field access on Tuple, Tuple struct or Enum's tuple.
+    /// An index-based field access on a tuple, tuple struct, or enum tuple.
     ///
-    /// Example:  the `5` of `.5` (Default impl)
+    /// Example: the `5` of `.5` (default impl)
     TupleIndex(usize),
-    /// An index-based access on List and Array.  
+    /// An index-based access on a list or array.
     ///
-    /// Example: the `5` of `[5]` (Default impl)
+    /// Example: the `5` of `[5]` (default impl)
     ListIndex(usize),
-    /// A index-based field access on Struct or Enum's struct.
+    /// An index-based field access on a struct or enum struct.
     ///
-    /// Can only be used to access Struct(excluding Tuple struct).
+    /// Can only be used to access a struct (excluding tuple structs).
     ///
-    /// Example: the `5` of `"#5"` (Default impl)
+    /// Example: the `5` of `"#5"` (default impl)
     FieldIndex(usize),
 }
 
@@ -128,7 +127,7 @@ impl<'a> Accessor<'a> {
         }
     }
 
-    /// Dynamic Access Fields, If successful, return the reference of the field.
+    /// Dynamically accesses a field; on success returns a shared reference.
     pub fn access<'r>(
         &self,
         base: &'r dyn Reflect,
@@ -167,7 +166,7 @@ impl<'a> Accessor<'a> {
             })
     }
 
-    /// Dynamic Access Fields, If successful, return the mutable reference of the field.
+    /// Dynamically accesses a field; on success returns a mutable reference.
     pub fn access_mut<'r>(
         &self,
         base: &'r mut dyn Reflect,
@@ -220,7 +219,7 @@ impl<'a> AccessError<'a> {
         &self.kind
     }
 
-    /// The returns the [`Access`] that this [`AccessError`] occurred in.
+    /// Returns the [`Access`] that this [`AccessError`] occurred in.
     #[inline]
     pub fn accessor(&self) -> &Accessor<'_> {
         &self.accessor
@@ -312,13 +311,13 @@ impl<'a> OffsetAccessor<'a> {
         }
     }
 
-    /// Dynamic Access Fields, If successful, return the reference of the field.
+    /// Dynamically accesses a field; on success returns a shared reference.
     #[inline]
     pub fn access<'r>(&self, base: &'r dyn Reflect) -> Result<&'r dyn Reflect, AccessError<'a>> {
         self.accessor.access(base, self.offset)
     }
 
-    /// Dynamic Access Fields, If successful, return the mutable reference of the field.
+    /// Dynamically accesses a field; on success returns a mutable reference.
     #[inline]
     pub fn access_mut<'r>(
         &self,
